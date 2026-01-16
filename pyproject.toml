@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "deckforge"
+version = "0.1.0"
+description = ""
+authors = ["peckerw00d <balkarov05@gmail.com>"]
+readme = "README.md"
+packages = [{include = "deckforge", from = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+fastapi = {extras = ["standard"], version = "^0.128.0"}
+uvicorn = "^0.40.0"
+dishka = "^1.7.2"
+sqlalchemy = "^2.0.45"
+asyncpg = "^0.31.0"
+alembic = "^1.17.2"
+dotenv = "^0.9.9"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
