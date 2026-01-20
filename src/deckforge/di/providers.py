@@ -4,6 +4,7 @@ from dishka import Provider, Scope, from_context, provide
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from deckforge.config import Config
+from deckforge.db.dao import DeckItemDAO, DeckTaskDAO
 from deckforge.db.sessionmaker import new_sessionmaker
 
 
@@ -22,3 +23,13 @@ class DBProvider(Provider):
     ) -> AsyncIterable[AsyncSession]:
         async with sessionmaker() as session:
             yield session
+
+
+class DAOProvider(Provider):
+    @provide(scope=Scope.REQUEST)
+    async def get_decktask_dao(self, session: AsyncSession) -> DeckTaskDAO:
+        return DeckTaskDAO(session=session)
+
+    @provide(scope=Scope.REQUEST)
+    async def get_deckitem_dao(self, session: AsyncSession) -> DeckItemDAO:
+        return DeckItemDAO(session=session)
