@@ -15,6 +15,7 @@ sqlalchemy = "^2.0.45"
 asyncpg = "^0.31.0"
 alembic = "^1.17.2"
 dotenv = "^0.9.9"
+faststream = {extras = ["rabbit"], version = "^0.6.5"}
 
 
 [build-system]
