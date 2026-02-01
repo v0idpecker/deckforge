@@ -1,11 +1,16 @@
 from typing import AsyncIterable
 
 from dishka import Provider, Scope, from_context, provide
+from faststream.rabbit.broker import RabbitBroker
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from deckforge.adapters.amqp.queue_publisher import RabbitPublisher
 from deckforge.config import Config
 from deckforge.db.dao import DeckItemDAO, DeckTaskDAO
 from deckforge.db.sessionmaker import new_sessionmaker
+from deckforge.pipeline.deck_pipeline import DeckPipeline
+from deckforge.services.decks.deckitem import DeckItemSerivce
+from deckforge.services.decks.decktask import DeckTaskService
 
 
 class DBProvider(Provider):
@@ -33,3 +38,41 @@ class DAOProvider(Provider):
     @provide(scope=Scope.REQUEST)
     async def get_deckitem_dao(self, session: AsyncSession) -> DeckItemDAO:
         return DeckItemDAO(session=session)
+
+
+class AMQPProvider(Provider):
+    broker = from_context(provides=RabbitBroker, scope=Scope.APP)
+    config = from_context(provides=Config, scope=Scope.APP)
+
+    @provide(scope=Scope.REQUEST)
+    async def get_publisher(
+        self, broker: RabbitBroker, config: Config
+    ) -> RabbitPublisher:
+        return RabbitPublisher(broker, config.rabbitmq.queue_name)
+
+
+class ServiceProvider(Provider):
+    @provide(scope=Scope.REQUEST)
+    async def get_decktask_service(
+        self,
+        session: AsyncSession,
+        decktask_dao: DeckTaskDAO,
+        publisher: RabbitPublisher,
+    ) -> DeckTaskService:
+        return DeckTaskService(session, decktask_dao, publisher)
+
+    @provide(scope=Scope.REQUEST)
+    async def get_deckitem_service(
+        self, session: AsyncSession, deckitem_dao: DeckItemDAO
+    ) -> DeckItemSerivce:
+        return DeckItemSerivce(session, deckitem_dao)
+
+
+class PipelineProvider(Provider):
+    config = from_context(provides=Config, scope=Scope.APP)
+
+    @provide(scope=Scope.REQUEST)
+    async def get_deck_pipeline(
+        self, decktask_service: DeckTaskService, deckitem_service: DeckItemSerivce
+    ) -> DeckPipeline:
+        return DeckPipeline(decktask_service, deckitem_service)
