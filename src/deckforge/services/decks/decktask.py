@@ -1,9 +1,25 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from deckforge.adapters.amqp.queue_publisher import QueuePublisher
 from deckforge.db.dao import DeckTaskDAO
+from deckforge.services.dto import DeckTaskCreateDTO
 
 
 class DeckTaskService:
-    def __init__(self, session: AsyncSession, decktask_dao: DeckTaskDAO):
-        self.session = session
-        self.decktask_dao = decktask_dao
+    def __init__(
+        self,
+        session: AsyncSession,
+        decktask_dao: DeckTaskDAO,
+        publisher: QueuePublisher,
+    ):
+        self._session = session
+        self._decktask_dao = decktask_dao
+        self._publisher = publisher
+
+    async def create_task(self, dto: DeckTaskCreateDTO):
+        async with self._session.begin():
+            task = await self._decktask_dao.create(dto)
+            await self._session.flush()
+            task_id = task.id
+
+        await self._publisher.send(str(task_id))
