@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from faststream import FastStream
 
 from deckforge.adapters.amqp.broker import new_broker
+from deckforge.adapters.amqp.worker import setup_worker
 from deckforge.config import create_config
 from deckforge.di.setup_container import setup_container
 
@@ -14,10 +15,11 @@ load_dotenv()
 
 config = create_config()
 container = setup_container(config=config)
-
 broker = new_broker(config.rabbitmq)
+router = setup_worker(config.rabbitmq.queue_name)
 faststream_app = FastStream(broker)
 setup_dishka_faststream(container, faststream_app)
+broker.include_router(router)
 
 
 @asynccontextmanager

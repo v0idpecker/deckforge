@@ -37,6 +37,7 @@ class DeckTaskDAO:
             options=data.options,
         )
         self.session.add(task)
+        return task
 
     async def get(self, id: UUID):
         res = await self.session.execute(select(DeckTask).where(DeckTask.id == id))

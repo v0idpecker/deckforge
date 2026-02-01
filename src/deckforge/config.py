@@ -9,6 +9,7 @@ class PostgresConfig(BaseModel):
 
 class RabbitMQConfig(BaseModel):
     url: str = Field(default_factory=lambda: str(os.getenv("RABBITMQ_URL")))
+    queue_name: str = "pipeline_queue"
 
 
 class Config(BaseModel):
