@@ -42,12 +42,12 @@ class DeckItem(Base):
     )
     task_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("deck_tasks.id"))
     raw_word: Mapped[str] = mapped_column(TEXT, nullable=False)
-    normalized_word: Mapped[str] = mapped_column(TEXT)
+    normalized_word: Mapped[str] = mapped_column(TEXT, nullable=True)
     status: Mapped[str] = mapped_column(TEXT, nullable=False)
     stage: Mapped[str] = mapped_column(TEXT, nullable=False)
-    sentence: Mapped[str] = mapped_column(TEXT)
-    translation: Mapped[str] = mapped_column(TEXT)
-    error: Mapped[str] = mapped_column(TEXT)
+    sentence: Mapped[str] = mapped_column(TEXT, nullable=True)
+    translation: Mapped[str] = mapped_column(TEXT, nullable=True)
+    error: Mapped[str] = mapped_column(TEXT, nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime, nullable=False, default=datetime.datetime.now
     )
