@@ -11,23 +11,20 @@ from deckforge.services.dto import DeckItemCreateDTO, DeckTaskCreateDTO
 
 class DAOInterface(Protocol):
     @abstractmethod
-    async def list(self):
+    async def list(self, session):
         raise NotImplementedError
 
     @abstractmethod
-    async def create(self, data):
+    async def create(self, data, session):
         raise NotImplementedError
 
 
 class DeckTaskDAO:
-    def __init__(self, session: AsyncSession):
-        self.session = session
-
-    async def list(self):
-        res = await self.session.execute(select(DeckTask))
+    async def list(self, session: AsyncSession):
+        res = await session.execute(select(DeckTask))
         return res.scalars().all()
 
-    async def create(self, data: DeckTaskCreateDTO):
+    async def create(self, data: DeckTaskCreateDTO, session: AsyncSession):
         task = DeckTask(
             status="CREATED",
             current_stage="NONE",
@@ -36,31 +33,29 @@ class DeckTaskDAO:
             failed_items=0,
             options=data.options,
         )
-        self.session.add(task)
+        session.add(task)
         return task
 
-    async def get(self, id: UUID):
-        res = await self.session.execute(select(DeckTask).where(DeckTask.id == id))
+    async def get(self, id: UUID, session: AsyncSession):
+        res = await session.execute(select(DeckTask).where(DeckTask.id == id))
         return res.scalar()
 
 
 class DeckItemDAO:
-    def __init__(self, session: AsyncSession):
-        self.session = session
-
-    async def list(self):
-        res = await self.session.execute(select(DeckItem))
+    async def list(self, session: AsyncSession):
+        res = await session.execute(select(DeckItem))
         return res.scalars().all()
 
-    async def create(self, data: DeckItemCreateDTO):
+    async def create(self, data: DeckItemCreateDTO, session: AsyncSession):
         item = DeckItem(
             task_id=data.task_id,
             raw_word=data.raw_word,
             status="PENDING",
             stage="NONE",
         )
-        self.session.add(item)
+        session.add(item)
+        return item
 
-    async def get(self, id: UUID):
-        res = await self.session.execute(select(DeckItem).where(DeckItem.id == id))
+    async def get(self, id: UUID, session: AsyncSession):
+        res = await session.execute(select(DeckItem).where(DeckItem.id == id))
         return res.scalar()

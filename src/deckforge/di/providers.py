@@ -32,12 +32,12 @@ class DBProvider(Provider):
 
 class DAOProvider(Provider):
     @provide(scope=Scope.REQUEST)
-    async def get_decktask_dao(self, session: AsyncSession) -> DeckTaskDAO:
-        return DeckTaskDAO(session=session)
+    async def get_decktask_dao(self) -> DeckTaskDAO:
+        return DeckTaskDAO()
 
     @provide(scope=Scope.REQUEST)
-    async def get_deckitem_dao(self, session: AsyncSession) -> DeckItemDAO:
-        return DeckItemDAO(session=session)
+    async def get_deckitem_dao(self) -> DeckItemDAO:
+        return DeckItemDAO()
 
 
 class AMQPProvider(Provider):
@@ -56,16 +56,15 @@ class ServiceProvider(Provider):
     async def get_decktask_service(
         self,
         session: AsyncSession,
+        deckitem_service: DeckItemSerivce,
         decktask_dao: DeckTaskDAO,
         publisher: RabbitPublisher,
     ) -> DeckTaskService:
-        return DeckTaskService(session, decktask_dao, publisher)
+        return DeckTaskService(session, deckitem_service, decktask_dao, publisher)
 
     @provide(scope=Scope.REQUEST)
-    async def get_deckitem_service(
-        self, session: AsyncSession, deckitem_dao: DeckItemDAO
-    ) -> DeckItemSerivce:
-        return DeckItemSerivce(session, deckitem_dao)
+    async def get_deckitem_service(self, deckitem_dao: DeckItemDAO) -> DeckItemSerivce:
+        return DeckItemSerivce(deckitem_dao)
 
 
 class PipelineProvider(Provider):
@@ -73,6 +72,9 @@ class PipelineProvider(Provider):
 
     @provide(scope=Scope.REQUEST)
     async def get_deck_pipeline(
-        self, decktask_service: DeckTaskService, deckitem_service: DeckItemSerivce
+        self,
+        session: AsyncSession,
+        decktask_service: DeckTaskService,
+        deckitem_service: DeckItemSerivce,
     ) -> DeckPipeline:
-        return DeckPipeline(decktask_service, deckitem_service)
+        return DeckPipeline(session, decktask_service, deckitem_service)

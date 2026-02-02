@@ -8,18 +8,20 @@ from faststream import FastStream
 
 from deckforge.adapters.amqp.broker import new_broker
 from deckforge.adapters.amqp.worker import setup_worker
+from deckforge.api.handlers import router
 from deckforge.config import create_config
 from deckforge.di.setup_container import setup_container
 
 load_dotenv()
 
 config = create_config()
-container = setup_container(config=config)
+
 broker = new_broker(config.rabbitmq)
-router = setup_worker(config.rabbitmq.queue_name)
+amqp_router = setup_worker(config.rabbitmq.queue_name)
 faststream_app = FastStream(broker)
+container = setup_container(config=config, broker=broker)
 setup_dishka_faststream(container, faststream_app)
-broker.include_router(router)
+broker.include_router(amqp_router)
 
 
 @asynccontextmanager
@@ -31,6 +33,7 @@ async def lifespan(app: FastAPI):
 
 def get_fastapi_app() -> FastAPI:
     app = FastAPI(title="Deck Forge", lifespan=lifespan)
+    app.include_router(router)
     setup_dishka_fastapi(app=app, container=container)
     return app
 

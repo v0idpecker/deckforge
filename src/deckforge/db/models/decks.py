@@ -21,7 +21,7 @@ class DeckTask(Base):
     completed_items: Mapped[int] = mapped_column(INT, default=0)
     failed_items: Mapped[int] = mapped_column(INT, default=0)
     options: Mapped[dict] = mapped_column(JSON, nullable=False)
-    error: Mapped[str] = mapped_column(TEXT)
+    error: Mapped[str] = mapped_column(TEXT, nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime, nullable=False, default=datetime.datetime.now
     )
