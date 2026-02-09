@@ -1,3 +1,6 @@
+from typing import List
+from uuid import UUID
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from deckforge.services.decks.deckitem import DeckItemSerivce
@@ -15,5 +18,8 @@ class DeckPipeline:
         self._decktask_service = decktask_service
         self._deckitem_service = deckitem_service
 
-    async def run(self, task_id: str):
+    async def run(self, task_id: UUID):
         print("ugabuga")
+
+    async def set_in_progress_status(self, items: List):
+        pass

@@ -1,9 +1,10 @@
 from abc import abstractmethod
-from typing import Protocol
+from typing import List, Protocol
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import select
+from sqlalchemy.sql.expression import and_
 
 from deckforge.db.models.decks import DeckItem, DeckTask
 from deckforge.services.dto import DeckItemCreateDTO, DeckTaskCreateDTO
@@ -59,3 +60,12 @@ class DeckItemDAO:
     async def get(self, id: UUID, session: AsyncSession):
         res = await session.execute(select(DeckItem).where(DeckItem.id == id))
         return res.scalar()
+
+    async def get_items_by_task_id(
+        self, task_id: UUID, session: AsyncSession
+    ) -> List[DeckItem]:
+        stmt = select(DeckItem).where(
+            and_(DeckItem.task_id == task_id, DeckItem.status == "PENDING")
+        )
+        res = await session.execute(stmt)
+        return list(res.scalars().all())
