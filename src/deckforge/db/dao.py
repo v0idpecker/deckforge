@@ -43,6 +43,7 @@ class DeckTaskDAO:
             options=data.options,
         )
         session.add(task)
+        await session.flush()
         return DeckTaskDTO.from_entity(task)
 
     async def get(self, id: UUID, session: AsyncSession) -> DeckTaskDTO:
@@ -83,3 +84,11 @@ class DeckItemDAO:
         res = await session.execute(stmt)
         values = res.scalars().all()
         return [DeckItemDTO.from_entity(value) for value in values]
+
+    async def set_status(
+        self, id: UUID, new_status: str, session: AsyncSession
+    ) -> None:
+        res = await session.execute(select(DeckItem).where(DeckItem.id == id))
+        item = res.scalars().one()
+        if item:
+            item.status = new_status

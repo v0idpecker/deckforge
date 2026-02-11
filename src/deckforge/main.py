@@ -20,7 +20,7 @@ broker = new_broker(config.rabbitmq)
 amqp_router = setup_worker(config.rabbitmq.queue_name)
 faststream_app = FastStream(broker)
 container = setup_container(config=config, broker=broker)
-setup_dishka_faststream(container, faststream_app)
+setup_dishka_faststream(container, faststream_app, auto_inject=True)
 broker.include_router(amqp_router)
 
 

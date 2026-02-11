@@ -14,4 +14,7 @@ class DeckItemSerivce:
         await self._deckitem_dao.create(dto, session)
 
     async def get_task_items(self, session: AsyncSession, task_id: UUID):
-        await self._deckitem_dao.get_items_by_task_id(task_id, session)
+        return await self._deckitem_dao.get_items_by_task_id(task_id, session)
+
+    async def set_status(self, session: AsyncSession, id: UUID, status: str):
+        await self._deckitem_dao.set_status(id, status, session)

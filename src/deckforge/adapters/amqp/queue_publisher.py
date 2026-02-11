@@ -14,5 +14,4 @@ class RabbitPublisher:
         self._queue = queue_name
 
     async def send(self, msg: str):
-        async with self._broker as broker:
-            await broker.publish(msg, self._queue)
+        await self._broker.publish(msg, self._queue)
