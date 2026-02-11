@@ -1,6 +1,8 @@
 import uuid
 from dataclasses import dataclass
 
+from deckforge.db.models.decks import DeckItem, DeckTask
+
 
 @dataclass
 class DeckTaskDTO:
@@ -12,6 +14,19 @@ class DeckTaskDTO:
     failed_items: int
     options: dict
     error: str
+
+    @classmethod
+    def from_entity(cls, entity: DeckTask) -> "DeckTaskDTO":
+        return cls(
+            id=entity.id,
+            status=entity.status,
+            current_stage=entity.current_stage,
+            total_items=entity.total_items,
+            completed_items=entity.completed_items,
+            failed_items=entity.failed_items,
+            options=entity.options,
+            error=entity.error,
+        )
 
 
 @dataclass
@@ -25,6 +40,20 @@ class DeckItemDTO:
     sentence: str
     translation: str
     error: str
+
+    @classmethod
+    def from_entity(cls, entity: DeckItem) -> "DeckItemDTO":
+        return cls(
+            id=entity.id,
+            task_id=entity.task_id,
+            raw_word=entity.raw_word,
+            normalized_word=entity.normalized_word,
+            status=entity.status,
+            stage=entity.stage,
+            sentence=entity.sentence,
+            translation=entity.translation,
+            error=entity.error,
+        )
 
 
 @dataclass
