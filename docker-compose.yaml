@@ -9,7 +9,7 @@ services:
     volumes:
       - deckforge_postgres:/var/lib/postgresql/data
     networks:
-      - deckforge_net
+      - net
   rabbitmq:
     image: rabbitmq:management
     hostname: rabbitmq
@@ -23,11 +23,11 @@ services:
       - 15673:15672
       - 5673:5672
     networks:
-      - deckforge_net
+      - net
 
 volumes:
   deckforge_postgres:
 
 networks:
-  deckforge_net:
+  net:
     driver: bridge

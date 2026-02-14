@@ -2,9 +2,11 @@ from typing import AsyncIterable
 
 from dishka import Provider, Scope, from_context, provide
 from faststream.rabbit.broker import RabbitBroker
+from nltk.stem.wordnet import WordNetLemmatizer
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from deckforge.adapters.amqp.queue_publisher import RabbitPublisher
+from deckforge.adapters.normalizer import Normilizer
 from deckforge.config import Config
 from deckforge.db.dao import DeckItemDAO, DeckTaskDAO
 from deckforge.db.sessionmaker import new_sessionmaker
@@ -76,5 +78,14 @@ class PipelineProvider(Provider):
         session: AsyncSession,
         decktask_service: DeckTaskService,
         deckitem_service: DeckItemSerivce,
+        normalizer: Normilizer,
     ) -> DeckPipeline:
-        return DeckPipeline(session, decktask_service, deckitem_service)
+        return DeckPipeline(session, decktask_service, deckitem_service, normalizer)
+
+
+class WordProcessingProvider(Provider):
+    lemmatizer = provide(WordNetLemmatizer, scope=Scope.REQUEST)
+
+    @provide(scope=Scope.REQUEST)
+    async def get_normalizer(self, lemmatizer: WordNetLemmatizer) -> Normilizer:
+        return Normilizer(lemmatizer)
