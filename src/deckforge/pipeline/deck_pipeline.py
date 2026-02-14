@@ -2,6 +2,7 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from deckforge.adapters.context_generator import ContextGenerator
 from deckforge.adapters.normalizer import Normilizer
 from deckforge.services.decks.deckitem import DeckItemSerivce
 from deckforge.services.decks.decktask import DeckTaskService
@@ -15,11 +16,13 @@ class DeckPipeline:
         decktask_service: DeckTaskService,
         deckitem_service: DeckItemSerivce,
         normalizer: Normilizer,
+        context_generator: ContextGenerator,
     ):
         self._session = session
         self._decktask_service = decktask_service
         self._deckitem_service = deckitem_service
         self._normalizer = normalizer
+        self._context_generator = context_generator
 
     async def run(self, task_id: UUID):
         async with self._session.begin():
@@ -27,6 +30,7 @@ class DeckPipeline:
             for item in items:
                 await self.set_in_progress_status(item)
                 await self.normilize_word(item)
+                await self.get_context_sentence(item)
                 print(item.__dict__)
 
     async def set_in_progress_status(self, item: DeckItemDTO):
@@ -36,3 +40,9 @@ class DeckPipeline:
     async def normilize_word(self, item: DeckItemDTO):
         normilized_word = self._normalizer.lemmatize_word(item.raw_word)
         item.normalized_word = normilized_word
+
+    async def get_context_sentence(self, item: DeckItemDTO):
+        examples = self._context_generator.get_context_sentence(item.normalized_word, 1)
+        for ex in examples:
+            item.sentence = ex["english"]
+            item.translation = ex["russian"]

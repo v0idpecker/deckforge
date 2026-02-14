@@ -81,13 +81,19 @@ class PipelineProvider(Provider):
         decktask_service: DeckTaskService,
         deckitem_service: DeckItemSerivce,
         normalizer: Normilizer,
+        context_generator: ContextGenerator,
     ) -> DeckPipeline:
-        return DeckPipeline(session, decktask_service, deckitem_service, normalizer)
+        return DeckPipeline(
+            session, decktask_service, deckitem_service, normalizer, context_generator
+        )
 
 
 class WordProcessingProvider(Provider):
     lemmatizer = provide(WordNetLemmatizer, scope=Scope.REQUEST)
-    parallel_corpus = provide(ParallelCorpus, scope=Scope.REQUEST)
+
+    @provide(scope=Scope.REQUEST)
+    async def get_parallel_corpus(self) -> ParallelCorpus:
+        return ParallelCorpus("eng", "rus")
 
     @provide(scope=Scope.REQUEST)
     async def get_normalizer(self, lemmatizer: WordNetLemmatizer) -> Normilizer:

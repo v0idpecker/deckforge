@@ -7,7 +7,7 @@ class ContextGenerator:
     def __init__(self, corpus: ParallelCorpus):
         self._corpus = ParallelCorpus
 
-    async def get_context_sentence(self, word: str, limit: int) -> List[dict]:
+    def get_context_sentence(self, word: str, limit: int) -> List[dict]:
         examples = []
 
         for sentence, translation in self._corpus("eng", "rus"):
