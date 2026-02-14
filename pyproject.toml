@@ -17,6 +17,7 @@ alembic = "^1.17.2"
 dotenv = "^0.9.9"
 faststream = {extras = ["rabbit"], version = "^0.6.5"}
 nltk = "^3.9.2"
+tatoebatools = "^0.2.3"
 
 
 [build-system]

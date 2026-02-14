@@ -4,8 +4,10 @@ from dishka import Provider, Scope, from_context, provide
 from faststream.rabbit.broker import RabbitBroker
 from nltk.stem.wordnet import WordNetLemmatizer
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from tatoebatools import ParallelCorpus
 
 from deckforge.adapters.amqp.queue_publisher import RabbitPublisher
+from deckforge.adapters.context_generator import ContextGenerator
 from deckforge.adapters.normalizer import Normilizer
 from deckforge.config import Config
 from deckforge.db.dao import DeckItemDAO, DeckTaskDAO
@@ -85,7 +87,12 @@ class PipelineProvider(Provider):
 
 class WordProcessingProvider(Provider):
     lemmatizer = provide(WordNetLemmatizer, scope=Scope.REQUEST)
+    parallel_corpus = provide(ParallelCorpus, scope=Scope.REQUEST)
 
     @provide(scope=Scope.REQUEST)
     async def get_normalizer(self, lemmatizer: WordNetLemmatizer) -> Normilizer:
         return Normilizer(lemmatizer)
+
+    @provide(scope=Scope.REQUEST)
+    async def get_context_generator(self, corpus: ParallelCorpus) -> ContextGenerator:
+        return ContextGenerator(corpus)
