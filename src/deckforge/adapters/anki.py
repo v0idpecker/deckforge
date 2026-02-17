@@ -26,5 +26,5 @@ class AnkiAdapter:
         note = Note(model=self.basic_model, fields=[sentence, translation])
         self.deck.add_note(note)
 
-    def export_deck(self):
-        Package(self.deck).write_to_file(f"media/{self.deck.deck_id}.apkg")
+    def export_deck(self, card_id: str):
+        Package(self.deck).write_to_file(f"media/{card_id}.apkg")

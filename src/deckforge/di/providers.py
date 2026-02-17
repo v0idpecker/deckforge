@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from tatoebatools import ParallelCorpus
 
 from deckforge.adapters.amqp.queue_publisher import RabbitPublisher
+from deckforge.adapters.anki import AnkiAdapter
 from deckforge.adapters.context_generator import ContextGenerator
 from deckforge.adapters.normalizer import Normilizer
 from deckforge.config import Config
@@ -82,14 +83,21 @@ class PipelineProvider(Provider):
         deckitem_service: DeckItemSerivce,
         normalizer: Normilizer,
         context_generator: ContextGenerator,
+        anki: AnkiAdapter,
     ) -> DeckPipeline:
         return DeckPipeline(
-            session, decktask_service, deckitem_service, normalizer, context_generator
+            session,
+            decktask_service,
+            deckitem_service,
+            normalizer,
+            context_generator,
+            anki,
         )
 
 
 class WordProcessingProvider(Provider):
     lemmatizer = provide(WordNetLemmatizer, scope=Scope.REQUEST)
+    anki = provide(AnkiAdapter, scope=Scope.REQUEST)
 
     @provide(scope=Scope.REQUEST)
     async def get_parallel_corpus(self) -> ParallelCorpus:

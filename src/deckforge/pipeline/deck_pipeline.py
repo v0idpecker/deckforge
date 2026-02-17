@@ -2,6 +2,7 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from deckforge.adapters.anki import AnkiAdapter
 from deckforge.adapters.context_generator import ContextGenerator
 from deckforge.adapters.normalizer import Normilizer
 from deckforge.services.decks.deckitem import DeckItemSerivce
@@ -17,12 +18,14 @@ class DeckPipeline:
         deckitem_service: DeckItemSerivce,
         normalizer: Normilizer,
         context_generator: ContextGenerator,
+        anki: AnkiAdapter,
     ):
         self._session = session
         self._decktask_service = decktask_service
         self._deckitem_service = deckitem_service
         self._normalizer = normalizer
         self._context_generator = context_generator
+        self._anki = anki
 
     async def run(self, task_id: UUID):
         async with self._session.begin():
@@ -31,6 +34,8 @@ class DeckPipeline:
                 await self.set_in_progress_status(item)
                 await self.normilize_word(item)
                 await self.get_context_sentence(item)
+                await self.create_anki_card(item)
+                self._anki.export_deck(str(item.id))
                 await self.update_item(item)
                 print(item.__dict__)
 
@@ -50,3 +55,6 @@ class DeckPipeline:
 
     async def update_item(self, item: DeckItemDTO):
         await self._deckitem_service.update_item(self._session, item)
+
+    async def create_anki_card(self, item: DeckItemDTO):
+        self._anki.add_card(item.sentence, item.translation)
