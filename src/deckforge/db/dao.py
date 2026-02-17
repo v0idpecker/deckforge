@@ -3,8 +3,7 @@ from typing import List, Protocol
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.sql import select
-from sqlalchemy.sql.expression import and_
+from sqlalchemy.sql.expression import and_, select, update
 
 from deckforge.db.models.decks import DeckItem, DeckTask
 from deckforge.services.dto import (
@@ -92,3 +91,16 @@ class DeckItemDAO:
         item = res.scalars().one()
         if item:
             item.status = new_status
+
+    async def update_item(self, session: AsyncSession, data: DeckItemDTO) -> None:
+        stmt = (
+            update(DeckItem)
+            .where(DeckItem.id == data.id)
+            .values(
+                status=data.status,
+                normalized_word=data.normalized_word,
+                sentence=data.sentence,
+                translation=data.translation,
+            )
+        )
+        await session.execute(stmt)

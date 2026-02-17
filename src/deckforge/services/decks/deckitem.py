@@ -3,7 +3,7 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio.session import AsyncSession
 
 from deckforge.db.dao import DeckItemDAO
-from deckforge.services.dto import DeckItemCreateDTO
+from deckforge.services.dto import DeckItemCreateDTO, DeckItemDTO
 
 
 class DeckItemSerivce:
@@ -18,3 +18,6 @@ class DeckItemSerivce:
 
     async def set_status(self, session: AsyncSession, id: UUID, status: str):
         await self._deckitem_dao.set_status(id, status, session)
+
+    async def update_item(self, session: AsyncSession, dto: DeckItemDTO):
+        await self._deckitem_dao.update_item(session, dto)

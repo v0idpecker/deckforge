@@ -31,6 +31,7 @@ class DeckPipeline:
                 await self.set_in_progress_status(item)
                 await self.normilize_word(item)
                 await self.get_context_sentence(item)
+                await self.update_item(item)
                 print(item.__dict__)
 
     async def set_in_progress_status(self, item: DeckItemDTO):
@@ -46,3 +47,6 @@ class DeckPipeline:
         for ex in examples:
             item.sentence = ex["english"]
             item.translation = ex["russian"]
+
+    async def update_item(self, item: DeckItemDTO):
+        await self._deckitem_service.update_item(self._session, item)
