@@ -2,6 +2,7 @@ import uuid
 
 from dishka.integrations.fastapi import DishkaRoute, FromDishka
 from fastapi import APIRouter
+from fastapi.responses import FileResponse
 
 from deckforge.api.schemas import DeckTaskCreateRequest
 from deckforge.services.decks.decktask import DeckTaskService
@@ -25,6 +26,8 @@ async def get_status(task_id: uuid.UUID):
     pass
 
 
-@router.get("/{task_id}/result")
-async def get_deck(task_id: uuid.UUID):
-    pass
+@router.get("/{item_id}/result")
+async def get_deck(item_id: uuid.UUID):
+    return FileResponse(
+        path=f"media/{item_id}.apkg", media_type="application/octet-stream"
+    )
