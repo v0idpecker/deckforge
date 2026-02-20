@@ -4,6 +4,7 @@ from dishka.integrations.fastapi import setup_dishka as setup_dishka_fastapi
 from dishka.integrations.faststream import setup_dishka as setup_dishka_faststream
 from dotenv import load_dotenv
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from faststream import FastStream
 
 from deckforge.adapters.amqp.broker import new_broker
@@ -34,6 +35,14 @@ async def lifespan(app: FastAPI):
 def get_fastapi_app() -> FastAPI:
     app = FastAPI(title="Deck Forge", lifespan=lifespan)
     app.include_router(router)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["http://localhost:5173"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
     setup_dishka_fastapi(app=app, container=container)
     return app
 
