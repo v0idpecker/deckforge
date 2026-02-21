@@ -8,7 +8,6 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from faststream import FastStream
-from tatoebatools.utils import os
 
 from deckforge.adapters.amqp.broker import new_broker
 from deckforge.adapters.amqp.worker import setup_worker

@@ -16,9 +16,7 @@ async def create_task(
     task: DeckTaskCreateRequest, service: FromDishka[DeckTaskService]
 ):
     task_dto = DeckTaskCreateDTO(**task.model_dump())
-    await service.create_task(task_dto)
-
-    return {"status": "unknown"}
+    return await service.create_task(task_dto)
 
 
 @router.get("/{task_id}/status")

@@ -30,3 +30,5 @@ class DeckTaskService:
                 await self._deckitem_service.create_items(self._session, item_dto)
 
         await self._publisher.send(str(task_id))
+
+        return task_id
