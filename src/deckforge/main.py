@@ -1,4 +1,6 @@
+import os
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from dishka.integrations.fastapi import setup_dishka as setup_dishka_fastapi
 from dishka.integrations.faststream import setup_dishka as setup_dishka_faststream
@@ -6,6 +8,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from faststream import FastStream
+from tatoebatools.utils import os
 
 from deckforge.adapters.amqp.broker import new_broker
 from deckforge.adapters.amqp.worker import setup_worker
@@ -14,6 +17,11 @@ from deckforge.config import create_config
 from deckforge.di.setup_container import setup_container
 
 load_dotenv()
+
+media_dir_path = Path("media")
+
+if not media_dir_path.is_dir():
+    os.mkdir("media")
 
 config = create_config()
 
