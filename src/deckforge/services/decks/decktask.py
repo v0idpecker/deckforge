@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from deckforge.adapters.amqp.queue_publisher import QueuePublisher
@@ -32,3 +34,7 @@ class DeckTaskService:
         await self._publisher.send(str(task_id))
 
         return task_id
+
+    async def get_task_status(self, task_id: UUID):
+        task = await self._decktask_dao.get(task_id, self._session)
+        return task.status
