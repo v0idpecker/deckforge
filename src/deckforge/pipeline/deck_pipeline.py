@@ -43,17 +43,22 @@ class DeckPipeline:
     async def set_in_progress_status(self, item: DeckItemDTO):
         if item.status == "PENDING":
             item.status = "PROCESSING"
+            item.stage = "INIT"
 
     async def set_done_status(self, item: DeckItemDTO):
         if item.status == "PROCESSING":
             item.status = "DONE"
+            item.stage = "DONE"
 
     async def normilize_word(self, item: DeckItemDTO):
         normilized_word = self._normalizer.lemmatize_word(item.raw_word)
         item.normalized_word = normilized_word
+        item.stage = "NORMILIZED"
 
     async def get_context_sentence(self, item: DeckItemDTO):
         examples = self._context_generator.get_context_sentence(item.normalized_word, 1)
         for ex in examples:
             item.sentence = ex["english"]
             item.translation = ex["russian"]
+
+        item.stage = "CONTEXT_GENERATED"
