@@ -34,8 +34,6 @@ class DeckPipeline:
                 await self.set_in_progress_status(item)
                 await self.normilize_word(item)
                 await self.get_context_sentence(item)
-                await self.create_anki_card(item)
-                self._anki.export_deck(str(item.id))
                 await self.update_item(item)
                 print(item.__dict__)
 
@@ -55,6 +53,3 @@ class DeckPipeline:
 
     async def update_item(self, item: DeckItemDTO):
         await self._deckitem_service.update_item(self._session, item)
-
-    async def create_anki_card(self, item: DeckItemDTO):
-        self._anki.add_card(item.sentence, item.translation)
