@@ -34,12 +34,17 @@ class DeckPipeline:
                 await self.set_in_progress_status(item)
                 await self.normilize_word(item)
                 await self.get_context_sentence(item)
+                await self.set_done_status(item)
                 await self.update_item(item)
                 print(item.__dict__)
 
     async def set_in_progress_status(self, item: DeckItemDTO):
         if item.status == "PENDING":
             item.status = "PROCESSING"
+
+    async def set_done_status(self, item: DeckItemDTO):
+        if item.status == "PROCESSING":
+            item.status = "DONE"
 
     async def normilize_word(self, item: DeckItemDTO):
         normilized_word = self._normalizer.lemmatize_word(item.raw_word)
