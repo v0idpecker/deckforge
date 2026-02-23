@@ -21,7 +21,7 @@ async def create_task(
 
 @router.get("/{task_id}/status")
 async def get_status(task_id: uuid.UUID, service: FromDishka[DeckTaskService]):
-    return service.get_task_status(task_id)
+    return await service.get_task_status(task_id)
 
 
 @router.get("/{item_id}/result")
