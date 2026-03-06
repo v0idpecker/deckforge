@@ -4,8 +4,22 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from deckforge.adapters.amqp.queue_publisher import QueuePublisher
 from deckforge.db.dao import DeckTaskDAO
+from deckforge.db.errors import (
+    DAOError,
+    DAOIntegrityError,
+    DAOInvalidInputError,
+    DAOMultipleResultsError,
+    DAONotFoundError,
+)
 from deckforge.services.decks.deckitem import DeckItemSerivce
 from deckforge.services.dto import DeckItemCreateDTO, DeckTaskCreateDTO
+from deckforge.services.errors import (
+    DataAccessError,
+    IntegrityError,
+    InvalidInputError,
+    MultipleResultsError,
+    NotFoundError,
+)
 
 
 class DeckTaskService:
@@ -22,20 +36,34 @@ class DeckTaskService:
         self._publisher = publisher
 
     async def create_task(self, dto: DeckTaskCreateDTO):
-        async with self._sessionmaker() as session, session.begin():
-            task = await self._decktask_dao.create(dto, session)
-            await session.flush()
-            task_id = task.id
+        try:
+            async with self._sessionmaker() as session, session.begin():
+                task = await self._decktask_dao.create(dto, session)
+                await session.flush()
+                task_id = task.id
 
-        for word in dto.words:
-            item_dto = DeckItemCreateDTO(task_id, word)
-            await self._deckitem_service.create_items(item_dto)
+            for word in dto.words:
+                item_dto = DeckItemCreateDTO(task_id, word)
+                await self._deckitem_service.create_items(item_dto)
 
-        await self._publisher.send(str(task_id))
+            await self._publisher.send(str(task_id))
 
-        return task_id
+            return task_id
+        except DAOInvalidInputError as e:
+            raise InvalidInputError(str(e)) from e
+        except DAOIntegrityError as e:
+            raise IntegrityError(str(e)) from e
+        except DAOError as e:
+            raise DataAccessError(str(e)) from e
 
     async def get_task_status(self, task_id: UUID):
         async with self._sessionmaker() as session, session.begin():
-            task = await self._decktask_dao.get(task_id, session)
-            return task.status
+            try:
+                task = await self._decktask_dao.get(task_id, session)
+                return task.status
+            except DAONotFoundError as e:
+                raise NotFoundError(str(e)) from e
+            except DAOMultipleResultsError as e:
+                raise MultipleResultsError(str(e)) from e
+            except DAOError as e:
+                raise DataAccessError(str(e)) from e

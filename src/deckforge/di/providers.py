@@ -9,7 +9,7 @@ from tatoebatools import ParallelCorpus
 from deckforge.adapters.amqp.queue_publisher import RabbitPublisher
 from deckforge.adapters.anki import AnkiAdapter
 from deckforge.adapters.context_generator import ContextGenerator
-from deckforge.adapters.normalizer import Normilizer
+from deckforge.adapters.normalizer import Normalizer
 from deckforge.config import Config
 from deckforge.db.dao import DeckItemDAO, DeckTaskDAO
 from deckforge.db.sessionmaker import new_sessionmaker
@@ -82,7 +82,7 @@ class PipelineProvider(Provider):
         self,
         decktask_service: DeckTaskService,
         deckitem_service: DeckItemSerivce,
-        normalizer: Normilizer,
+        normalizer: Normalizer,
         context_generator: ContextGenerator,
         anki: AnkiAdapter,
     ) -> DeckPipeline:
@@ -104,8 +104,8 @@ class WordProcessingProvider(Provider):
         return ParallelCorpus("eng", "rus")
 
     @provide(scope=Scope.REQUEST)
-    async def get_normalizer(self, lemmatizer: WordNetLemmatizer) -> Normilizer:
-        return Normilizer(lemmatizer)
+    async def get_normalizer(self, lemmatizer: WordNetLemmatizer) -> Normalizer:
+        return Normalizer(lemmatizer)
 
     @provide(scope=Scope.REQUEST)
     async def get_context_generator(self, corpus: ParallelCorpus) -> ContextGenerator:

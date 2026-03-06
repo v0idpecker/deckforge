@@ -34,7 +34,7 @@ class DeckItemDTO:
     id: uuid.UUID
     task_id: uuid.UUID
     raw_word: str
-    normalized_word: str
+    normalized_word: str | None
     status: str
     stage: str
     sentence: str
