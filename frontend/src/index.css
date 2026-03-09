@@ -1,0 +1,27 @@
+:root {
+  --bg: #f7f8f5;
+  --surface: #ffffff;
+  --border: #e8eae4;
+  --text-primary: #1a1f1c;
+  --text-secondary: #7a8a80;
+  --accent: #2d6a4f;
+  --accent-light: #ebf5ee;
+  --error: #c0392b;
+  --error-light: #fdecea;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text-primary);
+}
