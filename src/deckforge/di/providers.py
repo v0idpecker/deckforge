@@ -9,7 +9,7 @@ from tatoebatools import ParallelCorpus
 from deckforge.adapters.amqp.queue_publisher import RabbitPublisher
 from deckforge.adapters.anki import AnkiAdapter
 from deckforge.adapters.context_generator import ContextGenerator
-from deckforge.adapters.normalizer import Normilizer
+from deckforge.adapters.normalizer import Normalizer
 from deckforge.config import Config
 from deckforge.db.dao import DeckItemDAO, DeckTaskDAO
 from deckforge.db.sessionmaker import new_sessionmaker
@@ -60,16 +60,18 @@ class ServiceProvider(Provider):
     @provide(scope=Scope.REQUEST)
     async def get_decktask_service(
         self,
-        session: AsyncSession,
+        sessionmaker: async_sessionmaker[AsyncSession],
         deckitem_service: DeckItemSerivce,
         decktask_dao: DeckTaskDAO,
         publisher: RabbitPublisher,
     ) -> DeckTaskService:
-        return DeckTaskService(session, deckitem_service, decktask_dao, publisher)
+        return DeckTaskService(sessionmaker, deckitem_service, decktask_dao, publisher)
 
     @provide(scope=Scope.REQUEST)
-    async def get_deckitem_service(self, deckitem_dao: DeckItemDAO) -> DeckItemSerivce:
-        return DeckItemSerivce(deckitem_dao)
+    async def get_deckitem_service(
+        self, sessionmaker: async_sessionmaker[AsyncSession], deckitem_dao: DeckItemDAO
+    ) -> DeckItemSerivce:
+        return DeckItemSerivce(deckitem_dao, sessionmaker)
 
 
 class PipelineProvider(Provider):
@@ -78,15 +80,13 @@ class PipelineProvider(Provider):
     @provide(scope=Scope.REQUEST)
     async def get_deck_pipeline(
         self,
-        session: AsyncSession,
         decktask_service: DeckTaskService,
         deckitem_service: DeckItemSerivce,
-        normalizer: Normilizer,
+        normalizer: Normalizer,
         context_generator: ContextGenerator,
         anki: AnkiAdapter,
     ) -> DeckPipeline:
         return DeckPipeline(
-            session,
             decktask_service,
             deckitem_service,
             normalizer,
@@ -104,8 +104,8 @@ class WordProcessingProvider(Provider):
         return ParallelCorpus("eng", "rus")
 
     @provide(scope=Scope.REQUEST)
-    async def get_normalizer(self, lemmatizer: WordNetLemmatizer) -> Normilizer:
-        return Normilizer(lemmatizer)
+    async def get_normalizer(self, lemmatizer: WordNetLemmatizer) -> Normalizer:
+        return Normalizer(lemmatizer)
 
     @provide(scope=Scope.REQUEST)
     async def get_context_generator(self, corpus: ParallelCorpus) -> ContextGenerator:
