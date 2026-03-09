@@ -14,11 +14,12 @@ from deckforge.db.errors import (
 from deckforge.services.decks.deckitem import DeckItemSerivce
 from deckforge.services.dto import DeckItemCreateDTO, DeckTaskCreateDTO
 from deckforge.services.errors import (
+    ConflictError,
     DataAccessError,
-    IntegrityError,
     InvalidInputError,
     MultipleResultsError,
     NotFoundError,
+    ServiceError,
 )
 
 
@@ -52,7 +53,7 @@ class DeckTaskService:
         except DAOInvalidInputError as e:
             raise InvalidInputError(str(e)) from e
         except DAOIntegrityError as e:
-            raise IntegrityError(str(e)) from e
+            raise ConflictError(str(e)) from e
         except DAOError as e:
             raise DataAccessError(str(e)) from e
 
@@ -67,3 +68,10 @@ class DeckTaskService:
                 raise MultipleResultsError(str(e)) from e
             except DAOError as e:
                 raise DataAccessError(str(e)) from e
+
+    async def update_task_status(self, task_id: UUID, status: str):
+        async with self._sessionmaker() as session, session.begin():
+            try:
+                await self._decktask_dao.update_status(session, task_id, status)
+            except DAOError as e:
+                raise ServiceError(str(e)) from e

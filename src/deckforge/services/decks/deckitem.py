@@ -48,6 +48,6 @@ class DeckItemSerivce:
     async def update_item(self, dto: DeckItemDTO):
         try:
             async with self._sessionmaker() as session, session.begin():
-                await self._deckitem_dao.update_item(session, dto)
+                await self._deckitem_dao.update(session, dto)
         except DAOError as e:
             raise ServiceError(str(e)) from e
