@@ -7,6 +7,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql.sqltypes import INT, JSON, TEXT, UUID, DateTime
 
 from deckforge.db.models.base import Base
+from deckforge.db.models.user import User
 
 
 class DeckTask(Base):
@@ -31,7 +32,9 @@ class DeckTask(Base):
         default=datetime.datetime.now,
         onupdate=datetime.datetime.now,
     )
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
     deck_items: Mapped[List["DeckItem"]] = relationship(back_populates="deck_task")
+    user: Mapped["User"] = relationship(back_populates="tasks")
 
 
 class DeckItem(Base):

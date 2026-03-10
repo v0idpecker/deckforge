@@ -26,7 +26,6 @@ class DeckPipeline:
 
     async def run(self, task_id: UUID):
         await self._decktask_service.update_task_status(task_id, "PROCESSING")
-        # partially done
         items = await self._deckitem_service.get_task_items(task_id)
         has_errors = False
         for item in items:
