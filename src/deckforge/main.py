@@ -11,7 +11,7 @@ from faststream import FastStream
 
 from deckforge.adapters.amqp.broker import new_broker
 from deckforge.adapters.amqp.worker import setup_worker
-from deckforge.api.handlers import router
+from deckforge.api. import router
 from deckforge.config import create_config
 from deckforge.di.setup_container import setup_container
 
