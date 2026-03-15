@@ -20,6 +20,8 @@ nltk = "^3.9.2"
 tatoebatools = "^0.2.3"
 genanki = "^0.13.1"
 authlib = "^1.6.9"
+jwt = "^1.4.0"
+itsdangerous = "^2.2.0"
 
 
 [build-system]

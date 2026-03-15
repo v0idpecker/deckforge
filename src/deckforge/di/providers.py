@@ -11,11 +11,13 @@ from deckforge.adapters.anki import AnkiAdapter
 from deckforge.adapters.context_generator import ContextGenerator
 from deckforge.adapters.normalizer import Normalizer
 from deckforge.config import Config
-from deckforge.db.dao import DeckItemDAO, DeckTaskDAO
+from deckforge.db.dao.decks import DeckItemDAO, DeckTaskDAO
+from deckforge.db.dao.user import UserDAO
 from deckforge.db.sessionmaker import new_sessionmaker
 from deckforge.pipeline.deck_pipeline import DeckPipeline
 from deckforge.services.decks.deckitem import DeckItemSerivce
 from deckforge.services.decks.decktask import DeckTaskService
+from deckforge.services.user import UserService
 
 
 class DBProvider(Provider):
@@ -43,6 +45,10 @@ class DAOProvider(Provider):
     @provide(scope=Scope.REQUEST)
     async def get_deckitem_dao(self) -> DeckItemDAO:
         return DeckItemDAO()
+
+    @provide(scope=Scope.REQUEST)
+    async def get_user_dao(self) -> UserDAO:
+        return UserDAO()
 
 
 class AMQPProvider(Provider):
@@ -72,6 +78,12 @@ class ServiceProvider(Provider):
         self, sessionmaker: async_sessionmaker[AsyncSession], deckitem_dao: DeckItemDAO
     ) -> DeckItemSerivce:
         return DeckItemSerivce(deckitem_dao, sessionmaker)
+
+    @provide(scope=Scope.REQUEST)
+    async def get_user_service(
+        self, sessionmaker: async_sessionmaker[AsyncSession], user_dao: UserDAO
+    ) -> UserService:
+        return UserService(sessionmaker, user_dao)
 
 
 class PipelineProvider(Provider):

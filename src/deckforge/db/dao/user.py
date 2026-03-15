@@ -1,4 +1,3 @@
-import uuid
 from typing import List
 
 from sqlalchemy.exc import DataError, IntegrityError, SQLAlchemyError
@@ -12,7 +11,7 @@ from deckforge.db.errors import (
     DAONotFoundError,
 )
 from deckforge.db.models.user import User
-from deckforge.services.dto import UserDTO
+from deckforge.services.dto import UserCreateDTO, UserDTO
 
 
 class UserDAO:
@@ -26,7 +25,7 @@ class UserDAO:
         except SQLAlchemyError as e:
             raise DAOError(f"Unexpected database error: {e}")
 
-    async def create(self, session: AsyncSession, data: UserDTO) -> UserDTO:
+    async def create(self, session: AsyncSession, data: UserCreateDTO) -> UserDTO:
         try:
             user = User(
                 email=data.email,
@@ -43,12 +42,12 @@ class UserDAO:
         except SQLAlchemyError as e:
             raise DAOError(f"Unexpected database error: {e}")
 
-    async def get(self, session: AsyncSession, user_id: uuid.UUID) -> UserDTO:
+    async def get(self, session: AsyncSession, google_id: str | None) -> UserDTO:
         try:
-            res = await session.execute(select(User).where(User.id == user_id))
+            res = await session.execute(select(User).where(User.google_id == google_id))
             value = res.scalar()
             if not value:
-                raise DAONotFoundError(f"User not found: {user_id}")
+                raise DAONotFoundError(f"User not found: {google_id}")
             return UserDTO.from_entity(value)
         except SQLAlchemyError as e:
             raise DAOError(f"Unexpected database error: {e}")

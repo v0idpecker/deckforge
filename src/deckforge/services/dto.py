@@ -84,3 +84,10 @@ class UserDTO:
             email=entity.email,
             google_id=entity.google_id,
         )
+
+
+@dataclass
+class UserCreateDTO:
+    name: str | None
+    email: str | None
+    google_id: str | None
