@@ -3,7 +3,7 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from deckforge.adapters.amqp.queue_publisher import QueuePublisher
-from deckforge.db.dao import DeckTaskDAO
+from deckforge.db.dao.decks import DeckTaskDAO
 from deckforge.db.errors import (
     DAOError,
     DAOIntegrityError,

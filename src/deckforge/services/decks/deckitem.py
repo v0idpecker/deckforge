@@ -2,7 +2,7 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from deckforge.db.dao import DeckItemDAO
+from deckforge.db.dao.decks import DeckItemDAO
 from deckforge.db.errors import (
     DAOError,
     DAOIntegrityError,
