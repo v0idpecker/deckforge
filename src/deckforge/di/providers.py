@@ -10,6 +10,7 @@ from deckforge.adapters.amqp.queue_publisher import RabbitPublisher
 from deckforge.adapters.anki import AnkiAdapter
 from deckforge.adapters.context_generator import ContextGenerator
 from deckforge.adapters.normalizer import Normalizer
+from deckforge.adapters.security import GoogleOAuthAdapter, JWTAdapter
 from deckforge.config import Config
 from deckforge.db.dao.decks import DeckItemDAO, DeckTaskDAO
 from deckforge.db.dao.user import UserDAO
@@ -122,3 +123,15 @@ class WordProcessingProvider(Provider):
     @provide(scope=Scope.REQUEST)
     async def get_context_generator(self, corpus: ParallelCorpus) -> ContextGenerator:
         return ContextGenerator(corpus)
+
+
+class SecurityProvider(Provider):
+    config = from_context(provides=Config, scope=Scope.APP)
+
+    @provide(scope=Scope.REQUEST)
+    async def get_oauth_adapter(self, config: Config) -> GoogleOAuthAdapter:
+        return GoogleOAuthAdapter(config.security)
+
+    @provide(scope=Scope.REQUEST)
+    async def get_jwt_adapter(self, config: Config) -> JWTAdapter:
+        return JWTAdapter(config.security)

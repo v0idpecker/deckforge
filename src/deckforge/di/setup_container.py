@@ -8,6 +8,7 @@ from deckforge.di.providers import (
     DAOProvider,
     DBProvider,
     PipelineProvider,
+    SecurityProvider,
     ServiceProvider,
     WordProcessingProvider,
 )
@@ -21,6 +22,7 @@ def setup_container(config: Config, broker: RabbitBroker) -> AsyncContainer:
         AMQPProvider(),
         PipelineProvider(),
         WordProcessingProvider(),
+        SecurityProvider(),
         context={
             Config: config,
             RabbitBroker: broker,
