@@ -48,6 +48,8 @@ class DeckPipeline:
             await self.set_done_status(item)
             await self._deckitem_service.update_item(item)
 
+            self._anki.export_deck(str(task_id))
+
             print(item.__dict__)
 
         task_status = "PARTIALLY_DONE" if has_errors else "DONE"
@@ -77,5 +79,7 @@ class DeckPipeline:
         for ex in examples:
             item.sentence = ex["english"]
             item.translation = ex["russian"]
+
+            self._anki.add_card(ex["english"], ex["russian"])
 
         item.stage = "CONTEXT_GENERATED"
