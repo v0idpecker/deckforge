@@ -1,16 +1,20 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import { CssBaseline, ThemeProvider } from '@mui/material'
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import { CssBaseline, ThemeProvider } from "@mui/material";
 
-import App from './App'
-import { theme } from './app/theme'
-import './index.css'
+import App from "./App";
+import Landing from "./Landing";
+import { theme } from "./app/theme";
+import "./index.css";
 
-createRoot(document.getElementById('root')!).render(
+const pathname = window.location.pathname;
+const RootView = pathname.startsWith("/app") ? App : Landing;
+
+createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <App />
+      <RootView />
     </ThemeProvider>
   </StrictMode>,
-)
+);

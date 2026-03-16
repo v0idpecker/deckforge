@@ -4,6 +4,7 @@ from typing import Annotated
 from dishka.integrations.fastapi import DishkaRoute, FromDishka, inject
 from fastapi import APIRouter, Depends, Request
 from fastapi.exceptions import HTTPException
+from fastapi.responses import RedirectResponse
 from fastapi.security import OAuth2PasswordBearer
 from jwt.exceptions import ExpiredSignatureError, InvalidTokenError
 
@@ -48,9 +49,9 @@ async def google_callback(
     )
 
     access_token = jwt.create_access_token(
-        {"sub": str(user.id)}, expire_delta=timedelta(minutes=5)
+        {"sub": str(user.id)}, expire_delta=timedelta(days=30)
     )
-    return {"access_token": access_token}
+    return RedirectResponse(url=f"http://localhost:5173/app?token={access_token}")
 
 
 @inject

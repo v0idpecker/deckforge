@@ -1,3 +1,4 @@
+from typing import List
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -66,6 +67,16 @@ class DeckTaskService:
                 raise NotFoundError(str(e)) from e
             except DAOMultipleResultsError as e:
                 raise MultipleResultsError(str(e)) from e
+            except DAOError as e:
+                raise DataAccessError(str(e)) from e
+
+    async def get_tasks(self, user_id: UUID) -> List[DeckTaskDTO]:
+        async with self._sessionmaker() as session, session.begin():
+            try:
+                tasks = await self._decktask_dao.get_by_user(user_id, session)
+                return tasks
+            except DAONotFoundError as e:
+                raise NotFoundError(str(e)) from e
             except DAOError as e:
                 raise DataAccessError(str(e)) from e
 

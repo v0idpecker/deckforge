@@ -36,7 +36,7 @@ class JWTAdapter:
         if expire_delta:
             expire = datetime.now(timezone.utc) + expire_delta
         else:
-            expire = datetime.now(timezone.utc) + timedelta(minutes=15)
+            expire = datetime.now(timezone.utc) + timedelta(days=30)
         to_encode["exp"] = expire
         to_encode["auth_method"] = "google"
         encoded_jwt = jwt.encode(

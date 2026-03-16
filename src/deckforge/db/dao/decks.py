@@ -85,6 +85,20 @@ class DeckTaskDAO:
         except SQLAlchemyError as e:
             raise DAOError(f"Unexpected database error: {e}")
 
+    async def get_by_user(
+        self, user_id: UUID, session: AsyncSession
+    ) -> List[DeckTaskDTO]:
+        try:
+            res = await session.execute(
+                select(DeckTask).where(DeckTask.user_id == user_id)
+            )
+            values = res.scalars().all()
+            if values == []:
+                raise DAONotFoundError("No tasks found for the user")
+            return [DeckTaskDTO.from_entity(value) for value in values]
+        except SQLAlchemyError as e:
+            raise DAOError(f"Unexpected database error: {e}")
+
 
 class DeckItemDAO:
     async def list(self, session: AsyncSession) -> List[DeckItemDTO]:

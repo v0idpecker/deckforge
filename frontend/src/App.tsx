@@ -20,8 +20,10 @@ import {
   createDeckTask,
   downloadDeckResult,
   getDeckTaskStatus,
+  listDeckTasks,
 } from "./api/decks";
 import type {
+  DeckTaskHistoryItem,
   DeckItemStageValue,
   DeckItemStatusValue,
   DeckTaskItemStatus,
@@ -40,6 +42,20 @@ const STAGE_LABELS: Record<Exclude<DeckItemStageValue, null>, string> = {
   NORMILIZED: "Normalized",
   CONTEXT_GENERATED: "Context ready",
   DONE: "Done",
+};
+
+const HISTORY_STATUS_STYLES: Record<
+  DeckTaskStatusValue,
+  { label: string; background: string; color: string }
+> = {
+  PENDING: { label: "Pending", background: "#F0F0F0", color: "#888" },
+  PROCESSING: {
+    label: "Processing...",
+    background: "#EBF5EE",
+    color: "#2D6A4F",
+  },
+  DONE: { label: "Done", background: "#EBF5EE", color: "#2D6A4F" },
+  PARTIALLY_DONE: { label: "Partial", background: "#FEF9EC", color: "#92610A" },
 };
 
 function parseWords(raw: string): string[] {
@@ -162,6 +178,9 @@ function DecorativeIcon({ children }: { children: ReactNode }) {
 }
 
 function App() {
+  const [hasToken, setHasToken] = useState<boolean>(() =>
+    Boolean(localStorage.getItem("access_token")),
+  );
   const [viewState, setViewState] = useState<ViewState>("INPUT");
   const [wordsInput, setWordsInput] = useState("");
 
@@ -175,8 +194,67 @@ function App() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [taskHistory, setTaskHistory] = useState<DeckTaskHistoryItem[]>([]);
 
   const parsedWords = useMemo(() => parseWords(wordsInput), [wordsInput]);
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const token = url.searchParams.get("token");
+
+    if (token) {
+      localStorage.setItem("access_token", token);
+      url.searchParams.delete("token");
+      window.history.replaceState(
+        {},
+        document.title,
+        `${url.pathname}${url.search}${url.hash}`,
+      );
+      setHasToken(true);
+      return;
+    }
+
+    setHasToken(Boolean(localStorage.getItem("access_token")));
+  }, []);
+
+  const fetchTaskHistory = async () => {
+    try {
+      const decks = await listDeckTasks();
+      setTaskHistory(decks);
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : "Unknown error";
+      setError(message);
+    }
+  };
+
+  useEffect(() => {
+    if (!hasToken) {
+      return;
+    }
+
+    void fetchTaskHistory();
+  }, [hasToken]);
+
+  useEffect(() => {
+    if (!hasToken || viewState !== "DONE") {
+      return;
+    }
+
+    void fetchTaskHistory();
+  }, [hasToken, viewState]);
+
+  const downloadTaskFile = async (deckId: string) => {
+    const { blob, filename } = await downloadDeckResult(deckId);
+    const objectUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = objectUrl;
+    link.download = filename ?? `deck-${deckId}.apkg`;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(objectUrl);
+  };
 
   const handleGenerateDeck = async () => {
     if (parsedWords.length === 0) {
@@ -223,21 +301,23 @@ function App() {
     setIsDownloading(true);
 
     try {
-      const { blob, filename } = await downloadDeckResult(taskId);
-      const objectUrl = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-
-      link.href = objectUrl;
-      link.download = filename ?? `deck-${taskId}.apkg`;
-      document.body.append(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(objectUrl);
+      await downloadTaskFile(taskId);
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : "Unknown error";
       setError(message);
     } finally {
       setIsDownloading(false);
+    }
+  };
+
+  const handleHistoryDownload = async (deckId: string) => {
+    setError(null);
+
+    try {
+      await downloadTaskFile(deckId);
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : "Unknown error";
+      setError(message);
     }
   };
 
@@ -249,6 +329,11 @@ function App() {
     setSubmittedWords([]);
     setItems([]);
     setError(null);
+  };
+
+  const handleSignOut = () => {
+    localStorage.removeItem("access_token");
+    window.location.reload();
   };
 
   useEffect(() => {
@@ -317,27 +402,56 @@ function App() {
   return (
     <Container maxWidth="md" sx={{ py: { xs: 3, sm: 6 } }}>
       <Stack spacing={3.5}>
-        <Box>
-          <Typography
-            variant="overline"
-            sx={{ color: "text.secondary", letterSpacing: "0.08em" }}
-          >
-            DeckForge
-          </Typography>
-          <Typography variant="h4" component="h1" sx={{ mt: 0.5 }}>
-            Anki deck builder
-          </Typography>
-          <Typography
-            variant="body1"
-            color="text.secondary"
-            sx={{ mt: 1.5, maxWidth: 620 }}
-          >
-            Paste a list of words, track processing progress, and download your
-            generated deck.
-          </Typography>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "flex-start",
+            justifyContent: "space-between",
+            gap: 2,
+            flexWrap: "wrap",
+          }}
+        >
+          <Box>
+            <Typography
+              variant="overline"
+              sx={{ color: "text.secondary", letterSpacing: "0.08em" }}
+            >
+              DeckForge
+            </Typography>
+            <Typography variant="h4" component="h1" sx={{ mt: 0.5 }}>
+              Anki deck builder
+            </Typography>
+            <Typography
+              variant="body1"
+              color="text.secondary"
+              sx={{ mt: 1.5, maxWidth: 620 }}
+            >
+              Paste a list of words, track processing progress, and download
+              your generated deck.
+            </Typography>
+          </Box>
+          {hasToken && (
+            <Button
+              variant="text"
+              size="small"
+              onClick={handleSignOut}
+              sx={{
+                textTransform: "none",
+                color: "text.secondary",
+                mt: 0.5,
+                px: 0.5,
+                "&:hover": {
+                  backgroundColor: "transparent",
+                  color: "text.primary",
+                },
+              }}
+            >
+              Sign out
+            </Button>
+          )}
         </Box>
 
-        {error && (
+        {hasToken && error && (
           <Alert
             severity="error"
             sx={{
@@ -350,79 +464,204 @@ function App() {
           </Alert>
         )}
 
-        {viewState === "INPUT" && (
+        {!hasToken && (
           <Paper sx={cardSx}>
             <Stack spacing={2.5}>
               <DecorativeIcon>
                 <SvgIcon sx={{ fontSize: 44 }} viewBox="0 0 24 24">
-                  <path d="M21 4c0-1.1-.9-2-2-2H9C7.9 2 7 2.9 7 4v14c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V4zm-2 14H9V4h10v14zM5 6H3v16c0 1.1.9 2 2 2h12v-2H5V6z" />
+                  <path d="M12 17a2 2 0 0 0 2-2v-2a2 2 0 1 0-4 0v2a2 2 0 0 0 2 2Zm6-8h-1V7a5 5 0 0 0-10 0v2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2Zm-3 0H9V7a3 3 0 0 1 6 0v2Z" />
                 </SvgIcon>
               </DecorativeIcon>
-              <TextField
-                label="Words"
-                placeholder="apple\nrun\nlearn"
-                multiline
-                minRows={3}
-                maxRows={8}
-                fullWidth
-                value={wordsInput}
-                onChange={(event) => setWordsInput(event.target.value)}
-                InputProps={{
-                  sx: {
-                    fontFamily: '"DM Mono", ui-monospace, monospace',
-                    fontSize: 14,
-                    lineHeight: 1.7,
-                  },
-                }}
-              />
-
               <Box>
+                <Typography variant="h6">Welcome to DeckForge</Typography>
                 <Typography
                   variant="body2"
                   color="text.secondary"
-                  sx={{
-                    mb: 1,
-                    fontFamily: '"DM Mono", ui-monospace, monospace',
-                  }}
+                  sx={{ mt: 0.75 }}
                 >
-                  Parsed words ({parsedWords.length})
+                  Sign in to generate and download Anki decks
                 </Typography>
-                {parsedWords.length === 0 ? (
-                  <Typography variant="body2" color="text.secondary">
-                    No words yet.
-                  </Typography>
-                ) : (
-                  <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
-                    {parsedWords.map((word) => (
-                      <Chip
-                        key={word}
-                        label={word}
-                        onDelete={() => handleDeleteChip(word)}
-                      />
-                    ))}
-                  </Stack>
-                )}
               </Box>
-
-              <Box>
-                <Button
-                  variant="contained"
-                  size="large"
-                  onClick={handleGenerateDeck}
-                  disabled={parsedWords.length === 0 || isSubmitting}
-                >
-                  {isSubmitting ? (
-                    <CircularProgress size={18} color="inherit" />
-                  ) : (
-                    "Generate Deck"
-                  )}
-                </Button>
-              </Box>
+              <Button
+                variant="contained"
+                size="large"
+                fullWidth
+                onClick={() => {
+                  window.location.href = "http://127.0.0.1:8000/auth/google";
+                }}
+              >
+                Sign in with Google
+              </Button>
             </Stack>
           </Paper>
         )}
 
-        {viewState === "PROCESSING" && (
+        {hasToken && viewState === "INPUT" && (
+          <>
+            <Paper sx={cardSx}>
+              <Stack spacing={2.5}>
+                <DecorativeIcon>
+                  <SvgIcon sx={{ fontSize: 44 }} viewBox="0 0 24 24">
+                    <path d="M21 4c0-1.1-.9-2-2-2H9C7.9 2 7 2.9 7 4v14c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V4zm-2 14H9V4h10v14zM5 6H3v16c0 1.1.9 2 2 2h12v-2H5V6z" />
+                  </SvgIcon>
+                </DecorativeIcon>
+                <TextField
+                  label="Words"
+                  placeholder="apple\nrun\nlearn"
+                  multiline
+                  minRows={3}
+                  maxRows={8}
+                  fullWidth
+                  value={wordsInput}
+                  onChange={(event) => setWordsInput(event.target.value)}
+                  InputProps={{
+                    sx: {
+                      fontFamily: '"DM Mono", ui-monospace, monospace',
+                      fontSize: 14,
+                      lineHeight: 1.7,
+                    },
+                  }}
+                />
+
+                <Box>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{
+                      mb: 1,
+                      fontFamily: '"DM Mono", ui-monospace, monospace',
+                    }}
+                  >
+                    Parsed words ({parsedWords.length})
+                  </Typography>
+                  {parsedWords.length === 0 ? (
+                    <Typography variant="body2" color="text.secondary">
+                      No words yet.
+                    </Typography>
+                  ) : (
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      useFlexGap
+                      flexWrap="wrap"
+                    >
+                      {parsedWords.map((word) => (
+                        <Chip
+                          key={word}
+                          label={word}
+                          onDelete={() => handleDeleteChip(word)}
+                        />
+                      ))}
+                    </Stack>
+                  )}
+                </Box>
+
+                <Box>
+                  <Button
+                    variant="contained"
+                    size="large"
+                    onClick={handleGenerateDeck}
+                    disabled={parsedWords.length === 0 || isSubmitting}
+                  >
+                    {isSubmitting ? (
+                      <CircularProgress size={18} color="inherit" />
+                    ) : (
+                      "Generate Deck"
+                    )}
+                  </Button>
+                </Box>
+              </Stack>
+            </Paper>
+
+            {taskHistory.length > 0 && (
+              <Box>
+                <Typography
+                  variant="overline"
+                  sx={{
+                    color: "text.secondary",
+                    letterSpacing: "0.08em",
+                    fontFamily: '"DM Mono", ui-monospace, monospace',
+                  }}
+                >
+                  My Decks
+                </Typography>
+                <Stack spacing={0.5} sx={{ mt: 1 }}>
+                  {taskHistory.map((task) => {
+                    const statusStyle = HISTORY_STATUS_STYLES[task.status];
+                    const canDownload =
+                      task.status === "DONE" ||
+                      task.status === "PARTIALLY_DONE";
+
+                    return (
+                      <Box
+                        key={task.id}
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 2,
+                          px: 1.5,
+                          py: 1,
+                          borderRadius: 2,
+                          transition: "background-color 0.2s ease",
+                          "&:hover": {
+                            backgroundColor: "var(--accent-light)",
+                          },
+                        }}
+                      >
+                        <Typography variant="body2" color="text.secondary">
+                          {task.total_items} words
+                        </Typography>
+                        <Box
+                          sx={{
+                            ml: "auto",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 1.5,
+                          }}
+                        >
+                          <Box
+                            sx={{
+                              px: 1.1,
+                              py: 0.35,
+                              borderRadius: 999,
+                              backgroundColor: statusStyle.background,
+                              color: statusStyle.color,
+                              fontSize: 12,
+                              fontWeight: 500,
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {statusStyle.label}
+                          </Box>
+                          {canDownload && (
+                            <Button
+                              variant="text"
+                              size="small"
+                              onClick={() => handleHistoryDownload(task.id)}
+                              sx={{
+                                textTransform: "none",
+                                color: "text.secondary",
+                                px: 0.5,
+                                "&:hover": {
+                                  backgroundColor: "transparent",
+                                  color: "text.primary",
+                                },
+                              }}
+                            >
+                              Download
+                            </Button>
+                          )}
+                        </Box>
+                      </Box>
+                    );
+                  })}
+                </Stack>
+              </Box>
+            )}
+          </>
+        )}
+
+        {hasToken && viewState === "PROCESSING" && (
           <Paper sx={cardSx}>
             <Stack spacing={2.5}>
               <DecorativeIcon>
@@ -503,7 +742,7 @@ function App() {
           </Paper>
         )}
 
-        {viewState === "DONE" && (
+        {hasToken && viewState === "DONE" && (
           <Paper sx={cardSx}>
             <Stack spacing={0}>
               <DecorativeIcon>

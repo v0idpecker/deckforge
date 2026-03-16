@@ -1,10 +1,11 @@
 import type {
   DeckTaskCreateRequest,
   DeckTaskCreateResponse,
+  DeckTaskHistoryItem,
   DeckTaskItemStatus,
   DeckTaskStatusResponse,
 } from "../types/decks";
-import { ApiError, buildApiUrl, request } from "./client";
+import { ApiError, authHeaders, buildApiUrl, request } from "./client";
 
 export async function createDeckTask(
   payload: DeckTaskCreateRequest,
@@ -68,6 +69,42 @@ export async function getDeckTaskStatus(
   throw new ApiError("Invalid task status response format", 500);
 }
 
+export async function listDeckTasks(): Promise<DeckTaskHistoryItem[]> {
+  const rawResponse = await request<unknown>("/decks/", {
+    method: "GET",
+  });
+
+  if (!Array.isArray(rawResponse)) {
+    throw new ApiError("Invalid deck list response format", 500);
+  }
+
+  return rawResponse.map((item) => {
+    if (typeof item !== "object" || item === null) {
+      throw new ApiError("Invalid deck list response format", 500);
+    }
+
+    const payload = item as {
+      id?: unknown;
+      status?: unknown;
+      total_items?: unknown;
+    };
+
+    if (
+      typeof payload.id !== "string" ||
+      typeof payload.status !== "string" ||
+      typeof payload.total_items !== "number"
+    ) {
+      throw new ApiError("Invalid deck list response format", 500);
+    }
+
+    return {
+      id: payload.id,
+      status: payload.status as DeckTaskHistoryItem["status"],
+      total_items: payload.total_items,
+    };
+  });
+}
+
 function getFilenameFromHeaders(headers: Headers): string | null {
   const contentDisposition = headers.get("content-disposition");
   if (!contentDisposition) {
@@ -89,6 +126,7 @@ export async function downloadDeckResult(
 ): Promise<{ blob: Blob; filename: string | null }> {
   const response = await fetch(buildApiUrl(`/decks/${taskId}/result`), {
     method: "GET",
+    headers: authHeaders(),
   });
 
   if (!response.ok) {
