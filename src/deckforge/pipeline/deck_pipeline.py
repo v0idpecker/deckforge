@@ -26,6 +26,7 @@ class DeckPipeline:
 
     async def run(self, task_id: UUID):
         await self._decktask_service.update_task_status(task_id, "PROCESSING")
+        task = await self._decktask_service.get_task(task_id)
         items = await self._deckitem_service.get_task_items(task_id)
         has_errors = False
         for item in items:
@@ -33,11 +34,12 @@ class DeckPipeline:
             await self._deckitem_service.update_item(item)
 
             try:
-                await self.normalize_word(item)
-                await self._deckitem_service.update_item(item)
-
-                await self.get_context_sentence(item)
-                await self._deckitem_service.update_item(item)
+                if task.options.get("normalization"):
+                    await self.normalize_word(item)
+                    await self._deckitem_service.update_item(item)
+                if task.options.get("limit"):
+                    await self.get_context_sentence(item, task.options.get("limit", 1))
+                    await self._deckitem_service.update_item(item)
 
             except ExternalServiceError:
                 await self.set_error_status(item)
@@ -74,8 +76,10 @@ class DeckPipeline:
         item.normalized_word = normilized_word
         item.stage = "NORMILIZED"
 
-    async def get_context_sentence(self, item: DeckItemDTO):
-        examples = self._context_generator.get_context_sentence(item.normalized_word, 1)
+    async def get_context_sentence(self, item: DeckItemDTO, limit: int):
+        examples = self._context_generator.get_context_sentence(
+            item.normalized_word, limit
+        )
         for ex in examples:
             item.sentence = ex["english"]
             item.translation = ex["russian"]
