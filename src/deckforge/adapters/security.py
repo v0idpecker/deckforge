@@ -50,5 +50,5 @@ class JWTAdapter:
         return jwt.decode(
             token,
             self._config.jwt_secret,
-            algorithm="HS256",
+            algorithms=["HS256"],
         )

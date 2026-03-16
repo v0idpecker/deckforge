@@ -38,7 +38,7 @@ class DeckTaskDAO:
             raise DAOError(f"Unexpected database error: {e}")
 
     async def create(
-        self, data: DeckTaskCreateDTO, session: AsyncSession
+        self, data: DeckTaskCreateDTO, user_id: UUID, session: AsyncSession
     ) -> DeckTaskDTO:
         try:
             task = DeckTask(
@@ -48,6 +48,7 @@ class DeckTaskDAO:
                 completed_items=0,
                 failed_items=0,
                 options=data.options,
+                user_id=user_id,
             )
             session.add(task)
             await session.flush()

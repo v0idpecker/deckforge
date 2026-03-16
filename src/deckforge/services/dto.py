@@ -15,6 +15,7 @@ class DeckTaskDTO:
     failed_items: int
     options: dict
     error: str
+    user_id: uuid.UUID | None
 
     @classmethod
     def from_entity(cls, entity: DeckTask) -> "DeckTaskDTO":
@@ -27,6 +28,7 @@ class DeckTaskDTO:
             failed_items=entity.failed_items,
             options=entity.options,
             error=entity.error,
+            user_id=entity.user_id,
         )
 
 
