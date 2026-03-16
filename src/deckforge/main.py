@@ -8,10 +8,11 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from faststream import FastStream
+from starlette.middleware.sessions import SessionMiddleware
 
 from deckforge.adapters.amqp.broker import new_broker
 from deckforge.adapters.amqp.worker import setup_worker
-from deckforge.api. import router
+from deckforge.api.handlers import router
 from deckforge.config import create_config
 from deckforge.di.setup_container import setup_container
 
@@ -42,6 +43,10 @@ async def lifespan(app: FastAPI):
 def get_fastapi_app() -> FastAPI:
     app = FastAPI(title="Deck Forge", lifespan=lifespan)
     app.include_router(router)
+    app.add_middleware(
+        SessionMiddleware,
+        secret_key=config.security.session_secret,
+    )
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["http://localhost:5173"],

@@ -42,12 +42,24 @@ class UserDAO:
         except SQLAlchemyError as e:
             raise DAOError(f"Unexpected database error: {e}")
 
-    async def get(self, session: AsyncSession, google_id: str | None) -> UserDTO:
+    async def get_by_google_id(
+        self, session: AsyncSession, google_id: str | None
+    ) -> UserDTO:
         try:
             res = await session.execute(select(User).where(User.google_id == google_id))
             value = res.scalar()
             if not value:
                 raise DAONotFoundError(f"User not found: {google_id}")
+            return UserDTO.from_entity(value)
+        except SQLAlchemyError as e:
+            raise DAOError(f"Unexpected database error: {e}")
+
+    async def get_by_id(self, session: AsyncSession, user_id: str) -> UserDTO:
+        try:
+            res = await session.execute(select(User).where(User.id == user_id))
+            value = res.scalar()
+            if not value:
+                raise DAONotFoundError(f"User not found: {user_id}")
             return UserDTO.from_entity(value)
         except SQLAlchemyError as e:
             raise DAOError(f"Unexpected database error: {e}")
