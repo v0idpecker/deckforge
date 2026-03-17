@@ -15,7 +15,10 @@ export type DeckItemStageValue =
 
 export type DeckTaskCreateRequest = {
   words: string[];
-  options: Record<string, never>;
+  options: {
+    normalization: boolean;
+    limit: number;
+  };
 };
 
 export type DeckTaskCreateResponse = {

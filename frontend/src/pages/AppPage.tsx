@@ -6,12 +6,15 @@ import {
   Chip,
   CircularProgress,
   Container,
+  FormControlLabel,
   LinearProgress,
   List,
   ListItem,
   Paper,
+  Slider,
   Stack,
   SvgIcon,
+  Switch,
   TextField,
   Typography,
 } from "@mui/material";
@@ -188,6 +191,8 @@ function AppPage() {
   );
   const [submittedWords, setSubmittedWords] = useState<string[]>([]);
   const [items, setItems] = useState<DeckTaskItemStatus[]>([]);
+  const [normalizationEnabled, setNormalizationEnabled] = useState(true);
+  const [cardsPerWord, setCardsPerWord] = useState(1);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -269,7 +274,10 @@ function AppPage() {
     try {
       const response = await createDeckTask({
         words: parsedWords,
-        options: {},
+        options: {
+          normalization: normalizationEnabled,
+          limit: cardsPerWord,
+        },
       });
 
       if (!response.task_id) {
@@ -528,6 +536,54 @@ function AppPage() {
                       ))}
                     </Stack>
                   )}
+                </Box>
+
+                <Box
+                  sx={{
+                    borderTop: "1px solid var(--border)",
+                    pt: 2,
+                  }}
+                >
+                  <Stack spacing={2}>
+                    <Box>
+                      <FormControlLabel
+                        control={
+                          <Switch
+                            checked={normalizationEnabled}
+                            onChange={(event) =>
+                              setNormalizationEnabled(event.target.checked)
+                            }
+                          />
+                        }
+                        label="Normalize words"
+                      />
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ ml: 4.5, mt: 0.5 }}
+                      >
+                        Lemmatizes each word before processing (e.g. {"running"}{" "}
+                        {"\u2192"} {"run"}
+                      </Typography>
+                    </Box>
+                    <Box>
+                      <Typography
+                        variant="body2"
+                        sx={{ fontWeight: 600, mb: 1 }}
+                      >
+                        Cards per word: {cardsPerWord}
+                      </Typography>
+                      <Slider
+                        min={1}
+                        max={5}
+                        step={1}
+                        value={cardsPerWord}
+                        onChange={(_, value) =>
+                          setCardsPerWord(value as number)
+                        }
+                      />
+                    </Box>
+                  </Stack>
                 </Box>
 
                 <Box>
