@@ -39,10 +39,6 @@ services:
     environment:
       POSTGRES_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/postgres
       RABBITMQ_URL: amqp://rmuser:rmpassword@rabbitmq:5672/
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
-      JWT_SECRET: ${JWT_SECRET}
-      SESSION_SECRET: ${SESSION_SECRET}
     env_file:
       - .env.docker
     volumes:
