@@ -6,17 +6,33 @@ from deckforge.adapters.errors import ExternalServiceError
 
 
 class ContextGenerator:
-    def __init__(self, corpus: ParallelCorpus):
-        self._corpus = corpus
+    def get_context_sentence(
+        self, word: str | None, limit: int, sentence_lang: str, translation_lang: str
+    ) -> List[dict]:
+        lang_codes = {
+            "english": "eng",
+            "russian": "rus",
+            "german": "deu",
+            "spanish": "spa",
+            "french": "fra",
+            "italian": "ita",
+        }
 
-    def get_context_sentence(self, word: str | None, limit: int) -> List[dict]:
+        src = lang_codes.get(sentence_lang, "eng")
+        tgt = lang_codes.get(translation_lang, "rus")
+
+        corpus = ParallelCorpus(src, tgt)
+
         examples = []
 
-        for sentence, translation in self._corpus:
+        for sentence, translation in corpus:
             try:
                 if word is None or word.lower() in sentence.text.lower():
                     examples.append(
-                        {"english": sentence.text, "russian": translation.text}
+                        {
+                            sentence_lang: sentence.text,
+                            translation_lang: translation.text,
+                        }
                     )
 
                     if len(examples) >= limit:

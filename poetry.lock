@@ -1267,25 +1267,6 @@ files = [
 ]
 
 [[package]]
-name = "jwt"
-version = "1.4.0"
-description = "JSON Web Token library for Python 3."
-optional = false
-python-versions = ">=3.9"
-groups = ["main"]
-files = [
-    {file = "jwt-1.4.0-py3-none-any.whl", hash = "sha256:7560a7f1de4f90de94ac645ee0303ac60c95b9e08e058fb69f6c330f71d71b11"},
-    {file = "jwt-1.4.0.tar.gz", hash = "sha256:f6f789128ac247142c79ee10f3dba6e366ec4e77c9920d18c1592e28aa0a7952"},
-]
-
-[package.dependencies]
-cryptography = ">=3.1,<3.4.0 || >3.4.0"
-
-[package.extras]
-dev = ["black", "isort", "mypy", "types-freezegun"]
-test = ["freezegun", "pytest (>=6.0,<7.0)", "pytest-cov"]
-
-[[package]]
 name = "mako"
 version = "1.3.10"
 description = "A super-fast templating language that borrows the best ideas from the existing templating languages."
@@ -2177,6 +2158,23 @@ files = [
 
 [package.extras]
 windows-terminal = ["colorama (>=0.4.6)"]
+
+[[package]]
+name = "pyjwt"
+version = "1.7.1"
+description = "JSON Web Token implementation in Python"
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "PyJWT-1.7.1-py2.py3-none-any.whl", hash = "sha256:5c6eca3c2940464d106b99ba83b00c6add741c9becaec087fb7ccdefea71350e"},
+    {file = "PyJWT-1.7.1.tar.gz", hash = "sha256:8d59a976fb773f3e6a39c85636357c4f0e242707394cadadd9814f5cbaa20e96"},
+]
+
+[package.extras]
+crypto = ["cryptography (>=1.4)"]
+flake8 = ["flake8", "flake8-import-order", "pep8-naming"]
+test = ["pytest (>=4.0.1,<5.0.0)", "pytest-cov (>=2.6.0,<3.0.0)", "pytest-runner (>=4.2,<5.0.0)"]
 
 [[package]]
 name = "python-dateutil"
@@ -3432,4 +3430,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.12"
-content-hash = "e8d042447b85844d7bd1043691a0704910e8798ef30da763ff41e419ff879ed2"
+content-hash = "7a62a2f650fa805eb5cc3f3e4a96eaa632d27380bd8ff05c2fada22a7091de98"

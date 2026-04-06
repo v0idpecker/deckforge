@@ -7,10 +7,14 @@ import {
   CircularProgress,
   Container,
   FormControlLabel,
+  FormControl,
+  InputLabel,
   LinearProgress,
   List,
   ListItem,
+  MenuItem,
   Paper,
+  Select,
   Slider,
   Stack,
   SvgIcon,
@@ -193,6 +197,12 @@ function AppPage() {
   const [items, setItems] = useState<DeckTaskItemStatus[]>([]);
   const [normalizationEnabled, setNormalizationEnabled] = useState(true);
   const [cardsPerWord, setCardsPerWord] = useState(1);
+  const [sentenceLang, setSentenceLang] = useState<
+    "english" | "german" | "spanish" | "french" | "italian"
+  >("english");
+  const [translationLang, setTranslationLang] = useState<
+    "russian" | "english" | "german" | "spanish" | "french"
+  >("russian");
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -277,6 +287,8 @@ function AppPage() {
         options: {
           normalization: normalizationEnabled,
           limit: cardsPerWord,
+          sentence_lang: sentenceLang,
+          translation_lang: translationLang,
         },
       });
 
@@ -583,6 +595,50 @@ function AppPage() {
                         }
                       />
                     </Box>
+                    <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+                      <FormControl fullWidth size="small">
+                        <InputLabel id="sentence-lang-label">
+                          Example language
+                        </InputLabel>
+                        <Select
+                          labelId="sentence-lang-label"
+                          label="Example language"
+                          value={sentenceLang}
+                          onChange={(event) =>
+                            setSentenceLang(
+                              event.target.value as typeof sentenceLang,
+                            )
+                          }
+                        >
+                          <MenuItem value="english">English</MenuItem>
+                          <MenuItem value="german">German</MenuItem>
+                          <MenuItem value="spanish">Spanish</MenuItem>
+                          <MenuItem value="french">French</MenuItem>
+                          <MenuItem value="italian">Italian</MenuItem>
+                        </Select>
+                      </FormControl>
+                      <FormControl fullWidth size="small">
+                        <InputLabel id="translation-lang-label">
+                          Translation language
+                        </InputLabel>
+                        <Select
+                          labelId="translation-lang-label"
+                          label="Translation language"
+                          value={translationLang}
+                          onChange={(event) =>
+                            setTranslationLang(
+                              event.target.value as typeof translationLang,
+                            )
+                          }
+                        >
+                          <MenuItem value="russian">Russian</MenuItem>
+                          <MenuItem value="english">English</MenuItem>
+                          <MenuItem value="german">German</MenuItem>
+                          <MenuItem value="spanish">Spanish</MenuItem>
+                          <MenuItem value="french">French</MenuItem>
+                        </Select>
+                      </FormControl>
+                    </Stack>
                   </Stack>
                 </Box>
 

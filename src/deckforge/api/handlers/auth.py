@@ -1,6 +1,7 @@
 from datetime import timedelta
 from typing import Annotated
 
+from authlib.integrations.base_client.errors import OAuthError
 from dishka.integrations.fastapi import DishkaRoute, FromDishka, inject
 from fastapi import APIRouter, Depends, Request
 from fastapi.exceptions import HTTPException
@@ -8,6 +9,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.security import OAuth2PasswordBearer
 from jwt.exceptions import ExpiredSignatureError, InvalidTokenError
 
+from deckforge.adapters.errors import ExternalServiceError
 from deckforge.adapters.security import GoogleOAuthAdapter, JWTAdapter
 from deckforge.services.dto import UserCreateDTO, UserDTO
 from deckforge.services.user import UserService
@@ -37,7 +39,15 @@ async def google_callback(
     oauth: FromDishka[GoogleOAuthAdapter],
     jwt: FromDishka[JWTAdapter],
 ):
-    token = await oauth.authorize_access_token(request)
+    try:
+        token = await oauth.authorize_access_token(request)
+    except OAuthError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except ExternalServiceError as e:
+        raise HTTPException(
+            status_code=502, detail="Google OAuth service is temporarily unavailable"
+        ) from e
+
     user_info = token.get("userinfo") or {}
 
     user = await service.get_or_create(

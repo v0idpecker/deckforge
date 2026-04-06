@@ -1,9 +1,12 @@
+import asyncio
 from datetime import datetime, timedelta, timezone
 
+import httpx
 import jwt
 from authlib.integrations.starlette_client import OAuth
 from fastapi import Request
 
+from deckforge.adapters.errors import ExternalServiceError
 from deckforge.config import SecurityConfig
 
 
@@ -24,7 +27,16 @@ class GoogleOAuthAdapter:
         )
 
     async def authorize_access_token(self, request: Request):
-        return await self._oauth.google.authorize_access_token(request)
+        for attempt in range(2):
+            try:
+                return await self._oauth.google.authorize_access_token(request)
+            except (httpx.ConnectError, httpx.ConnectTimeout) as e:
+                if attempt == 0:
+                    await asyncio.sleep(0.5)
+                    continue
+                raise ExternalServiceError(
+                    "Failed to reach Google OAuth endpoints"
+                ) from e
 
 
 class JWTAdapter:
@@ -44,6 +56,9 @@ class JWTAdapter:
             self._config.jwt_secret,
             algorithm="HS256",
         )
+        # PyJWT 1.x returns bytes; normalize to str for URL/query usage.
+        if isinstance(encoded_jwt, bytes):
+            return encoded_jwt.decode("utf-8")
         return encoded_jwt
 
     def decode_access_token(self, token: str):

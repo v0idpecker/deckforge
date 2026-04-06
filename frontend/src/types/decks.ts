@@ -18,6 +18,8 @@ export type DeckTaskCreateRequest = {
   options: {
     normalization: boolean;
     limit: number;
+    sentence_lang: "english" | "german" | "spanish" | "french" | "italian";
+    translation_lang: "russian" | "english" | "german" | "spanish" | "french";
   };
 };
 

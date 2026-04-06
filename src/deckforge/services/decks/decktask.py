@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import List
 from uuid import UUID
 
@@ -86,3 +87,9 @@ class DeckTaskService:
                 await self._decktask_dao.update_status(session, task_id, status)
             except DAOError as e:
                 raise ServiceError(str(e)) from e
+
+    async def get_result_path(self, task_id: UUID) -> Path:
+        deck_path = Path("media") / f"{task_id}.apkg"
+        if not deck_path.is_file():
+            raise NotFoundError("Deck file is not ready yet")
+        return deck_path

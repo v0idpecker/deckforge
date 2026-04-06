@@ -4,7 +4,6 @@ from dishka import Provider, Scope, from_context, provide
 from faststream.rabbit.broker import RabbitBroker
 from nltk.stem.wordnet import WordNetLemmatizer
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
-from tatoebatools import ParallelCorpus
 
 from deckforge.adapters.amqp.queue_publisher import RabbitPublisher
 from deckforge.adapters.anki import AnkiAdapter
@@ -113,16 +112,12 @@ class WordProcessingProvider(Provider):
     anki = provide(AnkiAdapter, scope=Scope.REQUEST)
 
     @provide(scope=Scope.REQUEST)
-    async def get_parallel_corpus(self) -> ParallelCorpus:
-        return ParallelCorpus("eng", "rus")
-
-    @provide(scope=Scope.REQUEST)
     async def get_normalizer(self, lemmatizer: WordNetLemmatizer) -> Normalizer:
         return Normalizer(lemmatizer)
 
     @provide(scope=Scope.REQUEST)
-    async def get_context_generator(self, corpus: ParallelCorpus) -> ContextGenerator:
-        return ContextGenerator(corpus)
+    async def get_context_generator(self) -> ContextGenerator:
+        return ContextGenerator()
 
 
 class SecurityProvider(Provider):

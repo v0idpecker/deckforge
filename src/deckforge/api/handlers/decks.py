@@ -13,7 +13,7 @@ from deckforge.services.dto import DeckTaskCreateDTO, UserDTO
 from deckforge.services.errors import NotFoundError
 
 router = APIRouter(
-    prefix="/decks",
+    prefix="/api/decks",
     route_class=DishkaRoute,
     tags=[
         "Decks",
@@ -67,7 +67,9 @@ async def get_status(
 
 
 @router.get("/{item_id}/result")
-async def get_deck(item_id: uuid.UUID):
-    return FileResponse(
-        path=f"media/{item_id}.apkg", media_type="application/octet-stream"
-    )
+async def get_deck(item_id: uuid.UUID, service: FromDishka[DeckTaskService]):
+    try:
+        deck_path = await service.get_result_path(item_id)
+        return FileResponse(path=deck_path, media_type="application/octet-stream")
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))

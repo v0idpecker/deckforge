@@ -38,7 +38,12 @@ class DeckPipeline:
                     await self.normalize_word(item)
                     await self._deckitem_service.update_item(item)
                 if task.options.get("limit"):
-                    await self.get_context_sentence(item, task.options.get("limit", 1))
+                    await self.get_context_sentence(
+                        item,
+                        task.options.get("limit", 1),
+                        task.options.get("sentence_lang", "english"),
+                        task.options.get("translation_lang", "russian"),
+                    )
                     await self._deckitem_service.update_item(item)
 
             except ExternalServiceError:
@@ -76,14 +81,16 @@ class DeckPipeline:
         item.normalized_word = normilized_word
         item.stage = "NORMILIZED"
 
-    async def get_context_sentence(self, item: DeckItemDTO, limit: int):
+    async def get_context_sentence(
+        self, item: DeckItemDTO, limit: int, sentence_lang: str, translation_lang: str
+    ):
         examples = self._context_generator.get_context_sentence(
-            item.normalized_word, limit
+            item.normalized_word, limit, sentence_lang, translation_lang
         )
         for ex in examples:
-            item.sentence = ex["english"]
-            item.translation = ex["russian"]
+            item.sentence = ex[sentence_lang]
+            item.translation = ex[translation_lang]
 
-            self._anki.add_card(ex["english"], ex["russian"])
+            self._anki.add_card(ex[sentence_lang], ex[translation_lang])
 
         item.stage = "CONTEXT_GENERATED"
