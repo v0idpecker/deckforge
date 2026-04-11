@@ -1,5 +1,7 @@
 import { Box, Button, Container, Stack, Typography } from "@mui/material";
 
+const authBaseUrl = import.meta.env.VITE_AUTH_BASE_URL ?? "/auth";
+
 const steps = [
   {
     title: "Paste your words",
@@ -90,7 +92,7 @@ function LandingPage() {
             variant="contained"
             size="large"
             onClick={() => {
-              window.location.href = "http://127.0.0.1:8000/auth/google";
+              window.location.href = `${authBaseUrl}/google`;
             }}
             sx={{ alignSelf: "center" }}
           >

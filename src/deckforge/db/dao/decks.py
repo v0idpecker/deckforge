@@ -149,12 +149,13 @@ class DeckItemDAO:
     ) -> List[DeckItemDTO]:
         try:
             stmt = select(DeckItem).where(
-                and_(DeckItem.task_id == task_id, DeckItem.status == "PENDING")
+                and_(
+                    DeckItem.task_id == task_id,
+                    DeckItem.status.in_(("PENDING", "PROCESSING")),
+                )
             )
             res = await session.execute(stmt)
             values = res.scalars().all()
-            if values == []:
-                raise DAONotFoundError(f"No deck items found for task {task_id}")
             return [DeckItemDTO.from_entity(value) for value in values]
         except SQLAlchemyError as e:
             raise DAOError(f"Unexpected database error: {e}")

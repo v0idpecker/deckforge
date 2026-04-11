@@ -5,7 +5,7 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from deckforge.adapters.amqp.queue_publisher import QueuePublisher
-from deckforge.db.dao.decks import DeckTaskDAO
+from deckforge.db.dao.decks import DeckItemDAO, DeckTaskDAO
 from deckforge.db.errors import (
     DAOError,
     DAOIntegrityError,
@@ -13,7 +13,6 @@ from deckforge.db.errors import (
     DAOMultipleResultsError,
     DAONotFoundError,
 )
-from deckforge.services.decks.deckitem import DeckItemSerivce
 from deckforge.services.dto import DeckItemCreateDTO, DeckTaskCreateDTO, DeckTaskDTO
 from deckforge.services.errors import (
     ConflictError,
@@ -29,12 +28,12 @@ class DeckTaskService:
     def __init__(
         self,
         sessionmaker: async_sessionmaker[AsyncSession],
-        deckitem_service: DeckItemSerivce,
+        deckitem_dao: DeckItemDAO,
         decktask_dao: DeckTaskDAO,
         publisher: QueuePublisher,
     ):
         self._sessionmaker = sessionmaker
-        self._deckitem_service = deckitem_service
+        self._deckitem_dao = deckitem_dao
         self._decktask_dao = decktask_dao
         self._publisher = publisher
 
@@ -42,16 +41,13 @@ class DeckTaskService:
         try:
             async with self._sessionmaker() as session, session.begin():
                 task = await self._decktask_dao.create(dto, user_id, session)
-                await session.flush()
-                task_id = task.id
+                for word in dto.words:
+                    item_dto = DeckItemCreateDTO(task.id, word)
+                    await self._deckitem_dao.create(item_dto, session)
 
-            for word in dto.words:
-                item_dto = DeckItemCreateDTO(task_id, word)
-                await self._deckitem_service.create_items(item_dto)
+            await self._publisher.send(str(task.id))
 
-            await self._publisher.send(str(task_id))
-
-            return task_id
+            return task.id
         except DAOInvalidInputError as e:
             raise InvalidInputError(str(e)) from e
         except DAOIntegrityError as e:

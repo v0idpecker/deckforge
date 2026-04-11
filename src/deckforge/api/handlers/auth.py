@@ -11,6 +11,7 @@ from jwt.exceptions import ExpiredSignatureError, InvalidTokenError
 
 from deckforge.adapters.errors import ExternalServiceError
 from deckforge.adapters.security import GoogleOAuthAdapter, JWTAdapter
+from deckforge.config import Config
 from deckforge.services.dto import UserCreateDTO, UserDTO
 from deckforge.services.user import UserService
 
@@ -26,9 +27,14 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 
 @router.get("/google")
-async def auth_google(request: Request, oauth: FromDishka[GoogleOAuthAdapter]):
+async def auth_google(
+    request: Request,
+    oauth: FromDishka[GoogleOAuthAdapter],
+    config: FromDishka[Config],
+):
     return await oauth.get_google_redirect(
-        request, redirect_uri="http://127.0.0.1:8000/auth/google/callback"
+        request,
+        redirect_uri=f"{config.app.backend_public_url}/auth/google/callback",
     )
 
 
@@ -38,6 +44,7 @@ async def google_callback(
     service: FromDishka[UserService],
     oauth: FromDishka[GoogleOAuthAdapter],
     jwt: FromDishka[JWTAdapter],
+    config: FromDishka[Config],
 ):
     try:
         token = await oauth.authorize_access_token(request)
@@ -48,7 +55,7 @@ async def google_callback(
             status_code=502, detail="Google OAuth service is temporarily unavailable"
         ) from e
 
-    user_info = token.get("userinfo") or {}
+    user_info = token.get("userinfo") if token is not None else {}
 
     user = await service.get_or_create(
         UserCreateDTO(
@@ -61,7 +68,7 @@ async def google_callback(
     access_token = jwt.create_access_token(
         {"sub": str(user.id)}, expire_delta=timedelta(days=30)
     )
-    return RedirectResponse(url=f"http://localhost:5173/app?token={access_token}")
+    return RedirectResponse(url=f"{config.app.frontend_url}/app?token={access_token}")
 
 
 @inject

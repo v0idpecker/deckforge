@@ -67,11 +67,11 @@ class ServiceProvider(Provider):
     async def get_decktask_service(
         self,
         sessionmaker: async_sessionmaker[AsyncSession],
-        deckitem_service: DeckItemSerivce,
+        deckitem_dao: DeckItemDAO,
         decktask_dao: DeckTaskDAO,
         publisher: RabbitPublisher,
     ) -> DeckTaskService:
-        return DeckTaskService(sessionmaker, deckitem_service, decktask_dao, publisher)
+        return DeckTaskService(sessionmaker, deckitem_dao, decktask_dao, publisher)
 
     @provide(scope=Scope.REQUEST)
     async def get_deckitem_service(
