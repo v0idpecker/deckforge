@@ -6,6 +6,7 @@ from deckforge.adapters.errors import ExternalServiceError
 from deckforge.adapters.normalizer import Normalizer
 from deckforge.services.decks.deckitem import DeckItemSerivce
 from deckforge.services.decks.decktask import DeckTaskService
+from deckforge.services.errors import ServiceError
 from deckforge.services.dto import DeckItemDTO
 
 
@@ -25,9 +26,15 @@ class DeckPipeline:
         self._anki = anki
 
     async def run(self, task_id: UUID):
-        await self._decktask_service.update_task_status(task_id, "PROCESSING")
         task = await self._decktask_service.get_task(task_id)
+        if task.status in {"DONE", "PARTIALLY_DONE"}:
+            return
+
+        await self._decktask_service.update_task_status(task_id, "PROCESSING")
         items = await self._deckitem_service.get_task_items(task_id)
+        if not items:
+            raise ServiceError(f"No pending deck items found for task {task_id}")
+
         has_errors = False
         for item in items:
             await self.set_in_progress_status(item)
@@ -84,8 +91,9 @@ class DeckPipeline:
     async def get_context_sentence(
         self, item: DeckItemDTO, limit: int, sentence_lang: str, translation_lang: str
     ):
+        lookup_word = item.normalized_word or item.raw_word
         examples = self._context_generator.get_context_sentence(
-            item.normalized_word, limit, sentence_lang, translation_lang
+            lookup_word, limit, sentence_lang, translation_lang
         )
         for ex in examples:
             item.sentence = ex[sentence_lang]

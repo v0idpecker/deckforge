@@ -7,13 +7,11 @@ from deckforge.db.errors import (
     DAOError,
     DAOIntegrityError,
     DAOInvalidInputError,
-    DAONotFoundError,
 )
 from deckforge.services.dto import DeckItemCreateDTO, DeckItemDTO
 from deckforge.services.errors import (
     ConflictError,
     InvalidInputError,
-    NotFoundError,
     ServiceError,
 )
 
@@ -40,8 +38,6 @@ class DeckItemSerivce:
         async with self._sessionmaker() as session, session.begin():
             try:
                 return await self._deckitem_dao.get_items_by_task_id(task_id, session)
-            except DAONotFoundError as e:
-                raise NotFoundError(f"Service error: {e}")
             except DAOError as e:
                 raise ServiceError(str(e)) from e
 

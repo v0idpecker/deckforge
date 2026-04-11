@@ -25,6 +25,8 @@ if not media_dir_path.is_dir():
 
 config = create_config()
 
+print(config.app.backend_public_url)
+
 broker = new_broker(config.rabbitmq)
 amqp_router = setup_worker(config.rabbitmq.queue_name)
 faststream_app = FastStream(broker)
@@ -44,15 +46,17 @@ def get_fastapi_app() -> FastAPI:
     app = FastAPI(title="Deck Forge", lifespan=lifespan)
     app.include_router(router)
     app.add_middleware(
-        SessionMiddleware,
-        secret_key=config.security.session_secret,
-    )
-    app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:5173"],
+        allow_origins=config.app.cors_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
+    )
+    app.add_middleware(
+        SessionMiddleware,
+        secret_key=config.security.session_secret,
+        same_site="lax",
+        https_only=False,
     )
 
     setup_dishka_fastapi(app=app, container=container)
