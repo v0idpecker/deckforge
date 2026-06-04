@@ -13,7 +13,12 @@ from deckforge.db.errors import (
     DAOMultipleResultsError,
     DAONotFoundError,
 )
-from deckforge.services.dto import DeckItemCreateDTO, DeckTaskCreateDTO, DeckTaskDTO
+from deckforge.services.dto import (
+    DeckItemCreateDTO,
+    DeckItemDTO,
+    DeckTaskCreateDTO,
+    DeckTaskDTO,
+)
 from deckforge.services.errors import (
     ConflictError,
     DataAccessError,
@@ -64,6 +69,16 @@ class DeckTaskService:
                 raise NotFoundError(str(e)) from e
             except DAOMultipleResultsError as e:
                 raise MultipleResultsError(str(e)) from e
+            except DAOError as e:
+                raise DataAccessError(str(e)) from e
+
+    async def get_task_items(self, task_id: UUID) -> List[DeckItemDTO]:
+        async with self._sessionmaker() as session, session.begin():
+            try:
+                items = await self._deckitem_dao.get_all_items_by_task_id(
+                    task_id, session
+                )
+                return items
             except DAOError as e:
                 raise DataAccessError(str(e)) from e
 

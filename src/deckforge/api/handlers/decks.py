@@ -7,7 +7,13 @@ from fastapi.exceptions import HTTPException
 from fastapi.responses import FileResponse
 
 from deckforge.api.handlers.auth import get_current_user
-from deckforge.api.schemas import DeckTaskCreateRequest, DeckTaskResponce
+from deckforge.api.schemas import (
+    DeckTaskCreateRequest,
+    DeckTaskCreateResponse,
+    DeckTaskItemStatusResponse,
+    DeckTaskResponce,
+    DeckTaskStatusResponse,
+)
 from deckforge.services.decks.decktask import DeckTaskService
 from deckforge.services.dto import DeckTaskCreateDTO, UserDTO
 from deckforge.services.errors import NotFoundError
@@ -26,9 +32,10 @@ async def create_task(
     task: DeckTaskCreateRequest,
     service: FromDishka[DeckTaskService],
     current_user: Annotated[UserDTO, Depends(get_current_user)],
-):
+) -> DeckTaskCreateResponse:
     task_dto = DeckTaskCreateDTO(**task.model_dump())
-    return await service.create_task(task_dto, current_user.id)
+    task_id = await service.create_task(task_dto, current_user.id)
+    return DeckTaskCreateResponse(task_id=task_id)
 
 
 @router.get("/")
@@ -45,12 +52,40 @@ async def get_tasks(
             for task in tasks
         ]
         return response_tasks
-    except NotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except NotFoundError:
+        return []
 
 
 @router.get("/{task_id}/status")
 async def get_status(
+    task_id: uuid.UUID,
+    service: FromDishka[DeckTaskService],
+    current_user: Annotated[UserDTO, Depends(get_current_user)],
+) -> DeckTaskStatusResponse:
+    try:
+        task = await service.get_task(task_id)
+        if task.user_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden"
+            )
+        items = await service.get_task_items(task_id)
+        return DeckTaskStatusResponse(
+            status=task.status,
+            items=[
+                DeckTaskItemStatusResponse(
+                    raw_word=item.raw_word,
+                    status=item.status,
+                    stage=None if item.stage == "NONE" else item.stage,
+                )
+                for item in items
+            ],
+        )
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+
+@router.get("/{task_id}/result")
+async def get_deck(
     task_id: uuid.UUID,
     service: FromDishka[DeckTaskService],
     current_user: Annotated[UserDTO, Depends(get_current_user)],
@@ -61,15 +96,7 @@ async def get_status(
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden"
             )
-        return task.status
-    except NotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-
-
-@router.get("/{item_id}/result")
-async def get_deck(item_id: uuid.UUID, service: FromDishka[DeckTaskService]):
-    try:
-        deck_path = await service.get_result_path(item_id)
+        deck_path = await service.get_result_path(task_id)
         return FileResponse(path=deck_path, media_type="application/octet-stream")
     except NotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))

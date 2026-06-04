@@ -91,8 +91,9 @@ class DeckPipeline:
     async def get_context_sentence(
         self, item: DeckItemDTO, limit: int, sentence_lang: str, translation_lang: str
     ):
+        lookup_word = item.normalized_word or item.raw_word
         examples = self._context_generator.get_context_sentence(
-            item.normalized_word, limit, sentence_lang, translation_lang
+            lookup_word, limit, sentence_lang, translation_lang
         )
         for ex in examples:
             item.sentence = ex[sentence_lang]

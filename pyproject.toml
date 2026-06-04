@@ -22,6 +22,8 @@ genanki = "^0.13.1"
 authlib = "^1.6.9"
 PyJWT = "^1.4.0"
 itsdangerous = "^2.2.0"
+pytest = "^9.0.3"
+faker = "^40.15.0"
 
 
 [build-system]
