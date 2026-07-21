@@ -73,3 +73,5 @@ __pypackages__/
 .env
 .env.docker
 media
+allure-report/
+results/

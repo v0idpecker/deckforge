@@ -189,6 +189,7 @@ class DeckItemDAO:
                 .where(DeckItem.id == data.id)
                 .values(
                     status=data.status,
+                    stage=data.stage,
                     normalized_word=data.normalized_word,
                     sentence=data.sentence,
                     translation=data.translation,

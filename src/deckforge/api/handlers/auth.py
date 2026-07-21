@@ -13,6 +13,7 @@ from deckforge.adapters.errors import ExternalServiceError
 from deckforge.adapters.security import GoogleOAuthAdapter, JWTAdapter
 from deckforge.config import Config
 from deckforge.services.dto import UserCreateDTO, UserDTO
+from deckforge.services.errors import NotFoundError
 from deckforge.services.user import UserService
 
 router = APIRouter(
@@ -87,7 +88,11 @@ async def get_current_user(
     except InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-    user = await service.get_by_id(user_id)
+    try:
+        user = await service.get_by_id(user_id)
+    except NotFoundError:
+        raise HTTPException(status_code=401, detail="User not found")
+
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
 

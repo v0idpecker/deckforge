@@ -24,8 +24,20 @@ PyJWT = "^1.4.0"
 itsdangerous = "^2.2.0"
 pytest = "^9.0.3"
 faker = "^40.15.0"
+pytest-asyncio = "^1.4.0"
+httpx = "^0.28.1"
+allure-pytest = "^2.16.0"
 
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+asyncio_mode = "strict"
+markers = [
+  "integration: integration tests",
+  "slow: slow tests with external services",
+]

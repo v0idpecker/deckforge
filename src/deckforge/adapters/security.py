@@ -56,7 +56,7 @@ class JWTAdapter:
             self._config.jwt_secret,
             algorithm="HS256",
         )
-        # PyJWT 1.x returns bytes; normalize to str for URL/query usage.
+
         if isinstance(encoded_jwt, bytes):
             return encoded_jwt.decode("utf-8")
         return encoded_jwt
