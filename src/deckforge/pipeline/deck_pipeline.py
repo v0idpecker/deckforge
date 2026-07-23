@@ -6,8 +6,8 @@ from deckforge.adapters.errors import ExternalServiceError
 from deckforge.adapters.normalizer import Normalizer
 from deckforge.services.decks.deckitem import DeckItemSerivce
 from deckforge.services.decks.decktask import DeckTaskService
-from deckforge.services.errors import ServiceError
 from deckforge.services.dto import DeckItemDTO
+from deckforge.services.errors import ServiceError
 
 
 class DeckPipeline:
@@ -30,7 +30,9 @@ class DeckPipeline:
         if task.status in {"DONE", "PARTIALLY_DONE"}:
             return
 
-        await self._decktask_service.update_task_status(task_id, "PROCESSING")
+        claimed = await self._decktask_service.claim_for_processing(task.id)
+        if not claimed:
+            return
         items = await self._deckitem_service.get_task_items(task_id)
         if not items:
             raise ServiceError(f"No pending deck items found for task {task_id}")

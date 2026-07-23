@@ -97,6 +97,21 @@ class DeckTaskDAO:
         except SQLAlchemyError as e:
             raise DAOError(f"Unexpected database error: {e}")
 
+    async def claim_for_processing(self, task_id: UUID, session: AsyncSession) -> bool:
+        try:
+            stmt = (
+                update(DeckTask)
+                .where(DeckTask.id == task_id, DeckTask.status == "PENDING")
+                .values(status="PROCESSING")
+                .returning(DeckTask.id)
+            )
+            res = await session.execute(stmt)
+            claimed_task_id = res.scalar_one_or_none()
+
+            return claimed_task_id is not None
+        except SQLAlchemyError as e:
+            raise DAOError(f"Unexpected database error: {e}")
+
 
 class DeckItemDAO:
     async def list(self, session: AsyncSession) -> List[DeckItemDTO]:

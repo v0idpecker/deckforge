@@ -1,3 +1,4 @@
+import asyncio
 import uuid
 
 import allure
@@ -389,3 +390,80 @@ async def test_missing_task_id_raises_not_found_error(pipeline: DeckPipeline):
 
     with pytest.raises(NotFoundError):
         await pipeline.run(missing_id)
+
+
+async def test_only_one_worker_can_claim_pending_task(
+    decktask_service,
+    test_user,
+    db_session,
+):
+    task = DeckTask(
+        status="PENDING",
+        current_stage="NONE",
+        total_items=1,
+        options={
+            "limit": 1,
+            "sentence_lang": "english",
+            "translation_lang": "russian",
+        },
+        user_id=test_user.id,
+    )
+    db_session.add(task)
+    await db_session.commit()
+
+    results = await asyncio.gather(
+        decktask_service.claim_for_processing(task.id),
+        decktask_service.claim_for_processing(task.id),
+    )
+
+    assert sorted(results) == [False, True]
+
+    await db_session.refresh(task)
+    assert task.status == "PROCESSING"
+
+
+async def test_only_one_concurrent_pipeline_run_processes_task(
+    pipeline: DeckPipeline,
+    test_user,
+    db_session,
+    fake_normalizer,
+    fake_context_generator,
+    fake_anki,
+):
+    task = DeckTask(
+        status="PENDING",
+        current_stage="NONE",
+        total_items=1,
+        options={
+            "normalization": True,
+            "limit": 1,
+            "sentence_lang": "english",
+            "translation_lang": "russian",
+        },
+        user_id=test_user.id,
+    )
+
+    db_session.add(task)
+    await db_session.flush()
+    item = DeckItem(status="PENDING", stage="NONE", raw_word="cat", task_id=task.id)
+    db_session.add(item)
+    await db_session.commit()
+
+    await asyncio.gather(pipeline.run(task.id), pipeline.run(task.id))
+
+    db_session.expire_all()
+    await db_session.refresh(task)
+    await db_session.refresh(item)
+
+    new_task = (
+        await db_session.execute(select(DeckTask).where(DeckTask.id == task.id))
+    ).scalar_one()
+    new_item = (
+        await db_session.execute(select(DeckItem).where(DeckItem.id == item.id))
+    ).scalar_one()
+
+    assert new_task.status == "DONE"
+    assert new_item.status == "DONE"
+    assert len(fake_normalizer.calls) == 1
+    assert len(fake_context_generator.calls) == 1
+    assert len(fake_anki.exported_decks) == 1

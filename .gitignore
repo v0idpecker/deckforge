@@ -75,3 +75,4 @@ __pypackages__/
 media
 allure-report/
 results/
+.venv

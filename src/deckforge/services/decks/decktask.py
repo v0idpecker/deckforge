@@ -104,3 +104,10 @@ class DeckTaskService:
         if not deck_path.is_file():
             raise NotFoundError("Deck file is not ready yet")
         return deck_path
+
+    async def claim_for_processing(self, task_id: UUID) -> bool:
+        async with self._sessionmaker() as session, session.begin():
+            try:
+                return await self._decktask_dao.claim_for_processing(task_id, session)
+            except DAOError as e:
+                raise ServiceError(str(e)) from e
