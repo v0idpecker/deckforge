@@ -117,4 +117,3 @@ class OutboxEventDTO:
 class OutboxEventCreateDTO:
     payload: dict
     event_type: str
-    status: EventStatus | None

@@ -12,6 +12,7 @@ from deckforge.adapters.normalizer import Normalizer
 from deckforge.adapters.security import GoogleOAuthAdapter, JWTAdapter
 from deckforge.config import Config
 from deckforge.db.dao.decks import DeckItemDAO, DeckTaskDAO
+from deckforge.db.dao.outbox import OutboxEventDAO
 from deckforge.db.dao.user import UserDAO
 from deckforge.db.sessionmaker import new_sessionmaker
 from deckforge.pipeline.deck_pipeline import DeckPipeline
@@ -50,6 +51,10 @@ class DAOProvider(Provider):
     async def get_user_dao(self) -> UserDAO:
         return UserDAO()
 
+    @provide(scope=Scope.REQUEST)
+    async def get_outbox_event_dao(self) -> OutboxEventDAO:
+        return OutboxEventDAO()
+
 
 class AMQPProvider(Provider):
     broker = from_context(provides=RabbitBroker, scope=Scope.APP)
@@ -69,9 +74,11 @@ class ServiceProvider(Provider):
         sessionmaker: async_sessionmaker[AsyncSession],
         deckitem_dao: DeckItemDAO,
         decktask_dao: DeckTaskDAO,
-        publisher: RabbitPublisher,
+        outbox_event_dao: OutboxEventDAO,
     ) -> DeckTaskService:
-        return DeckTaskService(sessionmaker, deckitem_dao, decktask_dao, publisher)
+        return DeckTaskService(
+            sessionmaker, deckitem_dao, decktask_dao, outbox_event_dao
+        )
 
     @provide(scope=Scope.REQUEST)
     async def get_deckitem_service(

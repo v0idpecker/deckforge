@@ -4,8 +4,8 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from deckforge.adapters.amqp.queue_publisher import QueuePublisher
 from deckforge.db.dao.decks import DeckItemDAO, DeckTaskDAO
+from deckforge.db.dao.outbox import OutboxEventDAO
 from deckforge.db.errors import (
     DAOError,
     DAOIntegrityError,
@@ -18,6 +18,7 @@ from deckforge.services.dto import (
     DeckItemDTO,
     DeckTaskCreateDTO,
     DeckTaskDTO,
+    OutboxEventCreateDTO,
 )
 from deckforge.services.errors import (
     ConflictError,
@@ -35,12 +36,12 @@ class DeckTaskService:
         sessionmaker: async_sessionmaker[AsyncSession],
         deckitem_dao: DeckItemDAO,
         decktask_dao: DeckTaskDAO,
-        publisher: QueuePublisher,
+        outbox_event_dao: OutboxEventDAO,
     ):
         self._sessionmaker = sessionmaker
         self._deckitem_dao = deckitem_dao
         self._decktask_dao = decktask_dao
-        self._publisher = publisher
+        self._outbox_event_dao = outbox_event_dao
 
     async def create_task(self, dto: DeckTaskCreateDTO, user_id: UUID):
         try:
@@ -49,8 +50,10 @@ class DeckTaskService:
                 for word in dto.words:
                     item_dto = DeckItemCreateDTO(task.id, word)
                     await self._deckitem_dao.create(item_dto, session)
-
-            await self._publisher.send(str(task.id))
+                event = OutboxEventCreateDTO(
+                    payload={"task_id": str(task.id)}, event_type="deck_task_requested"
+                )
+                await self._outbox_event_dao.create(event, session)
 
             return task.id
         except DAOInvalidInputError as e:
