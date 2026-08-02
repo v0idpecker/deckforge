@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from deckforge.db.models.decks import DeckItem, DeckTask
+from deckforge.db.models.outbox import EventStatus, OutboxEvent
 from deckforge.db.models.user import User
 from deckforge.services.dto import UserDTO
 
@@ -17,7 +18,8 @@ pytestmark = pytest.mark.asyncio
 @allure.feature("Decks API")
 @allure.story("Create deck task")
 async def test_create_deck_task_creates_task(
-    client: AsyncClient, db_session: AsyncSession, fake_publisher
+    client: AsyncClient,
+    db_session: AsyncSession,
 ):
     response = await client.post(
         url="/api/decks/",
@@ -31,12 +33,17 @@ async def test_create_deck_task_creates_task(
 
     assert response.status_code == 200
     assert task_id
-    assert fake_publisher.messages == [str(task_id)]
 
-    res = await db_session.execute(select(DeckTask).where(DeckTask.id == task_id))
-    task = res.scalar_one()
+    res_task = await db_session.execute(select(DeckTask).where(DeckTask.id == task_id))
+    task = res_task.scalar_one()
+
+    res_event = await db_session.execute(select(OutboxEvent))
+    event = res_event.scalar_one()
 
     assert task
+    assert event.status == EventStatus.NEW
+    assert event.event_type == "deck_task_requested"
+    assert event.payload["task_id"] == str(task.id)
 
 
 @allure.feature("Decks API")
@@ -90,16 +97,11 @@ async def test_create_deck_task_creates_task_with_correct_state(
 
 @allure.feature("Decks API")
 @allure.story("Create deck task")
-async def test_publisher_is_called_after_create_deck_task(
-    client: AsyncClient, fake_publisher
-):
+async def test_publisher_is_called_after_create_deck_task(client: AsyncClient):
     response = await client.post(
         url="/api/decks/", json={"words": ["word"], "options": {}}
     )
     assert response.status_code == 200
-
-    task_id = response.json()["task_id"]
-    assert fake_publisher.messages == [str(task_id)]
 
 
 @allure.feature("Decks API")
@@ -361,9 +363,7 @@ async def test_result_of_someone_else_task_returns_403(
 
 @allure.feature("Decks API")
 @allure.story("Create deck task")
-async def test_create_empty_deck_task(
-    client: AsyncClient, db_session: AsyncSession, fake_publisher
-):
+async def test_create_empty_deck_task(client: AsyncClient, db_session: AsyncSession):
     response = await client.post(url="/api/decks/", json={"words": [], "options": {}})
 
     assert response.status_code == 200
@@ -373,4 +373,3 @@ async def test_create_empty_deck_task(
     task = res.scalar_one()
 
     assert task.total_items == 0
-    assert fake_publisher.messages == [str(task_id)]

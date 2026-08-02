@@ -430,6 +430,11 @@ async def broker(rabbit_config):
 
 
 @pytest_asyncio.fixture
+async def publisher(rabbit_config, broker):
+    return RabbitPublisher(broker=broker, queue_name=rabbit_config.queue_name)
+
+
+@pytest_asyncio.fixture
 async def faststream_app(rabbit_config, fake_pipeline, broker):
     router = setup_worker(queue_name=rabbit_config.rabbitmq.queue_name)
     broker.include_router(router)
