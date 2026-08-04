@@ -114,3 +114,10 @@ class DeckTaskService:
                 return await self._decktask_dao.claim_for_processing(task_id, session)
             except DAOError as e:
                 raise ServiceError(str(e)) from e
+
+    async def update_task(self, task_id: UUID, new_task: DeckTaskDTO):
+        async with self._sessionmaker() as session, session.begin():
+            try:
+                await self._decktask_dao.update(task_id, new_task, session)
+            except DAOError as e:
+                raise ServiceError(str(e)) from e

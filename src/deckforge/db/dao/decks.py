@@ -112,6 +112,17 @@ class DeckTaskDAO:
         except SQLAlchemyError as e:
             raise DAOError(f"Unexpected database error: {e}")
 
+    async def update(self, task_id: UUID, new_task: DeckTaskDTO, session: AsyncSession):
+        try:
+            stmt = (
+                update(DeckTask)
+                .where(DeckTask.id == task_id)
+                .values(**new_task.__dict__)
+            )
+            await session.execute(stmt)
+        except SQLAlchemyError as e:
+            raise DAOError(f"Unexpected database error: {e}")
+
 
 class DeckItemDAO:
     async def list(self, session: AsyncSession) -> List[DeckItemDTO]:

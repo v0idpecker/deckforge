@@ -32,6 +32,8 @@ class DeckTask(Base):
         default=datetime.datetime.now,
         onupdate=datetime.datetime.now,
     )
+    attempt_count: Mapped[int] = mapped_column(INT, nullable=False, default=0)
+    next_retry_at: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=True)
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
     deck_items: Mapped[List["DeckItem"]] = relationship(back_populates="deck_task")
     user: Mapped["User"] = relationship(back_populates="tasks")
