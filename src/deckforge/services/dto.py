@@ -1,3 +1,4 @@
+import datetime
 import uuid
 from dataclasses import dataclass
 
@@ -17,6 +18,8 @@ class DeckTaskDTO:
     options: dict
     error: str
     user_id: uuid.UUID | None
+    attempt_count: int
+    next_retry_at: datetime.datetime
 
     @classmethod
     def from_entity(cls, entity: DeckTask) -> "DeckTaskDTO":
@@ -30,6 +33,8 @@ class DeckTaskDTO:
             options=entity.options,
             error=entity.error,
             user_id=entity.user_id,
+            attempt_count=entity.attempt_count,
+            next_retry_count=entity.next_retry_at,
         )
 
 
