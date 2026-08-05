@@ -1,6 +1,6 @@
 import os
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, SecretStr
 
 
 def _csv_env(name: str, default: str) -> list[str]:
@@ -18,7 +18,9 @@ class RabbitMQConfig(BaseModel):
 
 
 class LLMConfig(BaseModel):
-    api_key: str = Field(default_factory=lambda: str(os.getenv("LLM_API_KEY")))
+    api_key: SecretStr = Field(
+        default_factory=lambda: SecretStr(os.getenv("LLM_API_KEY", ""))
+    )
     base_url: str = Field(default_factory=lambda: str(os.getenv("LLM_BASE_URL")))
     model: str = Field(default_factory=lambda: str(os.getenv("LLM_MODEL")))
 

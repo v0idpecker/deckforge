@@ -3,6 +3,7 @@ from typing import AsyncIterable
 from dishka import Provider, Scope, from_context, provide
 from faststream.rabbit.broker import RabbitBroker
 from nltk.stem.wordnet import WordNetLemmatizer
+from openai import AsyncOpenAI
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from deckforge.adapters.amqp.queue_publisher import RabbitPublisher
@@ -115,6 +116,7 @@ class PipelineProvider(Provider):
 
 
 class WordProcessingProvider(Provider):
+    config = from_context(provides=Config, scope=Scope.APP)
     lemmatizer = provide(WordNetLemmatizer, scope=Scope.REQUEST)
     anki = provide(AnkiAdapter, scope=Scope.REQUEST)
 
@@ -123,8 +125,14 @@ class WordProcessingProvider(Provider):
         return Normalizer(lemmatizer)
 
     @provide(scope=Scope.REQUEST)
-    async def get_context_generator(self) -> ContextGenerator:
-        return ContextGenerator()
+    async def get_context_generator(
+        self, client: AsyncOpenAI, config: Config
+    ) -> ContextGenerator:
+        return ContextGenerator(client=client, model=config.llm.model)
+
+    @provide(scope=Scope.APP)
+    async def get_llm_client(self, config: Config) -> AsyncOpenAI:
+        return AsyncOpenAI(api_key=config.llm.api_key, base_url=config.llm.base_url)
 
 
 class SecurityProvider(Provider):
