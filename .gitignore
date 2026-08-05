@@ -77,3 +77,4 @@ allure-report/
 results/
 .venv
 docker/
+alembic/versions
