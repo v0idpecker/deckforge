@@ -17,6 +17,12 @@ class RabbitMQConfig(BaseModel):
     queue_name: str = "pipeline_queue"
 
 
+class LLMConfig(BaseModel):
+    api_key: str = Field(default_factory=lambda: str(os.getenv("LLM_API_KEY")))
+    base_url: str = Field(default_factory=lambda: str(os.getenv("LLM_BASE_URL")))
+    model: str = Field(default_factory=lambda: str(os.getenv("LLM_MODEL")))
+
+
 class SecurityConfig(BaseModel):
     google_client_id: str = Field(
         default_factory=lambda: str(os.getenv("GOOGLE_CLIENT_ID"))
@@ -49,6 +55,7 @@ class AppConfig(BaseModel):
 class Config(BaseModel):
     postgres: PostgresConfig = Field(default_factory=PostgresConfig)
     rabbitmq: RabbitMQConfig = Field(default_factory=RabbitMQConfig)
+    llm: LLMConfig = Field(default_factory=LLMConfig)
     security: SecurityConfig = Field(default_factory=SecurityConfig)
     app: AppConfig = Field(default_factory=AppConfig)
 
