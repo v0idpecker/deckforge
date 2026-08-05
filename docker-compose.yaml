@@ -101,6 +101,37 @@ services:
       retries: 5
       start_period: 10s
 
+  relay:
+    image: deckforge-backend
+    restart: unless-stopped
+    command: ["python", "-m", "deckforge.relay"]
+    environment:
+      POSTGRES_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/postgres
+      RABBITMQ_URL: amqp://rmuser:rmpassword@rabbitmq:5672/
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  scheduler:
+    image: deckforge-backend
+    restart: unless-stopped
+    command: ["python", "-m", "deckforge.scheduler"]
+    environment:
+      POSTGRES_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/postgres
+      RABBITMQ_URL: amqp://rmuser:rmpassword@rabbitmq:5672/
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+
 volumes:
   postgres_data:
   rabbitmq_data:

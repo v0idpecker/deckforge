@@ -1,3 +1,4 @@
+import datetime
 from typing import List
 from uuid import UUID
 
@@ -112,12 +113,43 @@ class DeckTaskDAO:
         except SQLAlchemyError as e:
             raise DAOError(f"Unexpected database error: {e}")
 
-    async def update(self, task_id: UUID, new_task: DeckTaskDTO, session: AsyncSession):
+    async def update(self, new_task: DeckTaskDTO, session: AsyncSession):
         try:
             stmt = (
                 update(DeckTask)
-                .where(DeckTask.id == task_id)
+                .where(DeckTask.id == new_task.id)
                 .values(**new_task.__dict__)
+            )
+            await session.execute(stmt)
+        except SQLAlchemyError as e:
+            raise DAOError(f"Unexpected database error: {e}")
+
+    async def get_tasks_ready_for_retry(
+        self, session: AsyncSession, next_retry_at: datetime.datetime
+    ) -> List[DeckTaskDTO]:
+        try:
+            stmt = select(DeckTask).where(
+                DeckTask.status == "RETRY_SCHEDULED",
+                DeckTask.next_retry_at <= next_retry_at,
+            )
+            res = await session.execute(stmt)
+            tasks = res.scalars().all()
+
+            return [DeckTaskDTO.from_entity(task) for task in tasks]
+        except SQLAlchemyError as e:
+            raise DAOError(f"Unexpected database error: {e}")
+
+    async def complete(self, session: AsyncSession, id: UUID, status: str) -> None:
+        try:
+            stmt = (
+                update(DeckTask)
+                .where(DeckTask.id == id)
+                .values(
+                    status=status,
+                    attempt_count=0,
+                    next_retry_at=None,
+                    error=None,
+                )
             )
             await session.execute(stmt)
         except SQLAlchemyError as e:
@@ -175,7 +207,7 @@ class DeckItemDAO:
             stmt = select(DeckItem).where(
                 and_(
                     DeckItem.task_id == task_id,
-                    DeckItem.status.in_(("PENDING", "PROCESSING")),
+                    DeckItem.status.in_(("PENDING", "PROCESSING", "ERROR")),
                 )
             )
             res = await session.execute(stmt)

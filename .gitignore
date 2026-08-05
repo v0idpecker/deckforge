@@ -76,3 +76,4 @@ media
 allure-report/
 results/
 .venv
+docker/

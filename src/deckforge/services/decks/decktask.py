@@ -133,15 +133,47 @@ class DeckTaskService:
             capped_delay = min(calculated_delay, max_delay)
             return timedelta(seconds=capped_delay)
 
-        task = await self.get_task(task_id)
+        try:
+            task = await self.get_task(task_id)
 
-        if task.attempt_count < MAX_ATTEMPTS:
-            task.attempt_count += 1
-            task.error = str(error)
-            task.next_retry_at = datetime.now() + backoff(attempt=task.attempt_count)
-            task.status = "RETRY_SCHEDULED"
-        else:
-            task.error = str(error)
-            task.status = "FAILED"
+            if task.status in {"DONE", "PARTIALLY_DONE", "FAILED"}:
+                return
 
-        await self.update_task(task)
+            if task.attempt_count < MAX_ATTEMPTS:
+                task.attempt_count += 1
+                task.error = str(error)
+                task.next_retry_at = datetime.now() + backoff(
+                    attempt=task.attempt_count
+                )
+                task.status = "RETRY_SCHEDULED"
+            else:
+                task.error = str(error)
+                task.status = "FAILED"
+
+            await self.update_task(task)
+        except DAOError as e:
+            raise ServiceError(str(e)) from e
+
+    async def find_ready_for_retry(self) -> List[DeckTaskDTO]:
+        async with self._sessionmaker() as session, session.begin():
+            try:
+                return await self._decktask_dao.get_tasks_ready_for_retry(
+                    session, datetime.now()
+                )
+            except DAOError as e:
+                raise ServiceError(str(e)) from e
+
+    async def reschedule_for_retry(self, task_id: UUID):
+        async with self._sessionmaker() as session, session.begin():
+            await self.update_task_status(task_id, "PENDING")
+            event = OutboxEventCreateDTO(
+                payload={"task_id": str(task_id)}, event_type="deck_task_requested"
+            )
+            await self._outbox_event_dao.create(event, session)
+
+    async def complete_task(self, task_id: UUID, status: str):
+        async with self._sessionmaker() as session, session.begin():
+            try:
+                await self._decktask_dao.complete(session, task_id, status)
+            except DAOError as e:
+                raise ServiceError(str(e)) from e

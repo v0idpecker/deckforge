@@ -33,10 +33,12 @@ from deckforge.config import (
     SecurityConfig,
 )
 from deckforge.db.dao.decks import DeckItemDAO, DeckTaskDAO
+from deckforge.db.dao.outbox import OutboxEventDAO
 from deckforge.db.models import Base
 from deckforge.db.models.user import User
 from deckforge.di.providers import DAOProvider, ServiceProvider
 from deckforge.pipeline.deck_pipeline import DeckPipeline
+from deckforge.scheduler.service import RetryScheduler
 from deckforge.services.decks.deckitem import DeckItemSerivce
 from deckforge.services.decks.decktask import DeckTaskService
 from deckforge.services.dto import UserDTO
@@ -344,8 +346,18 @@ async def deckitem_service(deckitem_dao, sessionmaker):
 
 
 @pytest_asyncio.fixture
-async def decktask_service(sessionmaker, deckitem_dao, decktask_dao, fake_publisher):
-    return DeckTaskService(sessionmaker, deckitem_dao, decktask_dao, fake_publisher)
+async def outbox_dao():
+    return OutboxEventDAO()
+
+
+@pytest_asyncio.fixture
+async def decktask_service(sessionmaker, deckitem_dao, decktask_dao, outbox_dao):
+    return DeckTaskService(sessionmaker, deckitem_dao, decktask_dao, outbox_dao)
+
+
+@pytest_asyncio.fixture
+async def scheduler(decktask_service, sessionmaker, outbox_dao):
+    return RetryScheduler(decktask_service, sessionmaker, outbox_dao)
 
 
 @pytest_asyncio.fixture

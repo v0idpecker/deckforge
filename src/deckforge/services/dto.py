@@ -34,7 +34,7 @@ class DeckTaskDTO:
             error=entity.error,
             user_id=entity.user_id,
             attempt_count=entity.attempt_count,
-            next_retry_count=entity.next_retry_at,
+            next_retry_at=entity.next_retry_at,
         )
 
 

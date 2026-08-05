@@ -15,11 +15,15 @@ COPY src/ ./src/
 COPY alembic/ ./alembic/
 COPY alembic.ini .
 
+RUN apt-get update && apt-get install -y gcc unzip
+
 ENV NLTK_DATA=/usr/local/share/nltk_data
 
-RUN mkdir -p ${NLTK_DATA} \
-    && python -m nltk.downloader -d ${NLTK_DATA} wordnet omw-1.4
-
+COPY docker/nltk_data/ /tmp/nltk_data/
+RUN mkdir -p ${NLTK_DATA}/corpora \
+    && unzip -q /tmp/nltk_data/wordnet.zip -d ${NLTK_DATA}/corpora \
+    && unzip -q /tmp/nltk_data/omw-1.4.zip -d ${NLTK_DATA}/corpora \
+    && rm -rf /tmp/nltk_data
 
 ENV PYTHONPATH=/app/src
 CMD ["sh", "-c", "alembic upgrade head && uvicorn deckforge.main:app --host 0.0.0.0 --port 8000"]

@@ -59,7 +59,7 @@ class DeckPipeline:
                 await self.set_error_status(item)
                 await self._deckitem_service.update_item(item)
                 has_errors = True
-                continue
+                raise
 
             await self.set_done_status(item)
             await self._deckitem_service.update_item(item)
@@ -69,10 +69,10 @@ class DeckPipeline:
             print(item.__dict__)
 
         task_status = "PARTIALLY_DONE" if has_errors else "DONE"
-        await self._decktask_service.update_task_status(task_id, task_status)
+        await self._decktask_service.complete_task(task_id, task_status)
 
     async def set_in_progress_status(self, item: DeckItemDTO):
-        if item.status == "PENDING":
+        if item.status in {"PENDING", "ERROR"}:
             item.status = "PROCESSING"
             item.stage = "INIT"
 

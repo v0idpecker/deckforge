@@ -20,8 +20,7 @@ async def main():
     dao = OutboxEventDAO()
     relay = OutboxRelay(sessionmaker, dao, publisher)
 
-    print(config.rabbitmq.url)
-    print("Запуск!")
+    print("Relay is running!")
     await broker.start()
     try:
         await relay.run_polling_loop()

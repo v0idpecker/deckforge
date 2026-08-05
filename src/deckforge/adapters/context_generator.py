@@ -1,44 +1,22 @@
 from typing import List
 
-from tatoebatools import ParallelCorpus
-
-from deckforge.adapters.errors import ExternalServiceError
-
 
 class ContextGenerator:
+    """Stub implementation that returns fixed example sentences.
+
+    No external calls are made, so the pipeline no longer depends on
+    the Tatoeba network downloads. TODO: replace with a real generator
+    (e.g. LLM-based) keeping the same interface.
+    """
+
     def get_context_sentence(
         self, word: str | None, limit: int, sentence_lang: str, translation_lang: str
     ) -> List[dict]:
-        lang_codes = {
-            "english": "eng",
-            "russian": "rus",
-            "german": "deu",
-            "spanish": "spa",
-            "french": "fra",
-            "italian": "ita",
-        }
-
-        src = lang_codes.get(sentence_lang, "eng")
-        tgt = lang_codes.get(translation_lang, "rus")
-
-        corpus = ParallelCorpus(src, tgt)
-
-        examples = []
-
-        for sentence, translation in corpus:
-            try:
-                if word is None or word.lower() in sentence.text.lower():
-                    examples.append(
-                        {
-                            sentence_lang: sentence.text,
-                            translation_lang: translation.text,
-                        }
-                    )
-
-                    if len(examples) >= limit:
-                        break
-
-            except ConnectionError as e:
-                raise ExternalServiceError(f"Failed to fetch context: {e}")
-
-        return examples
+        lookup_word = word or "word"
+        return [
+            {
+                sentence_lang: f"{lookup_word}: this is a stub sentence.",
+                translation_lang: f"{lookup_word}: это предложение-заглушка.",
+            }
+            for _ in range(limit)
+        ]

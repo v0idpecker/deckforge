@@ -6,6 +6,7 @@ import pytest
 from sqlalchemy.ext.asyncio.session import AsyncSession
 from sqlalchemy.sql.expression import select
 
+from deckforge.adapters.errors import ExternalServiceError
 from deckforge.db.models.decks import DeckItem, DeckTask
 from deckforge.pipeline.deck_pipeline import DeckPipeline
 from deckforge.services.dto import UserDTO
@@ -334,7 +335,7 @@ async def test_several_items_are_being_processed(
 
 @allure.feature("Deck pipeline")
 @allure.story("Error handling")
-async def test_external_service_error_on_one_item_makes_task_prtially_done(
+async def test_external_service_error_marks_item_error_and_propagates(
     pipeline: DeckPipeline,
     db_session: AsyncSession,
     test_user: UserDTO,
@@ -363,7 +364,8 @@ async def test_external_service_error_on_one_item_makes_task_prtially_done(
 
     fake_context_generator.words_to_fail.add("broken")
 
-    await pipeline.run(task.id)
+    with pytest.raises(ExternalServiceError):
+        await pipeline.run(task.id)
 
     db_session.expire_all()
 
@@ -378,7 +380,8 @@ async def test_external_service_error_on_one_item_makes_task_prtially_done(
         await db_session.execute(select(DeckItem).where(DeckItem.id == broken_item.id))
     ).scalar_one()
 
-    assert task.status == "PARTIALLY_DONE"
+    # ошибка пробрасывается наружу, чтобы воркер запланировал ретрай
+    assert task.status == "PROCESSING"
     assert cat.status == "DONE"
     assert broken.status == "ERROR"
 
