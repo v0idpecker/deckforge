@@ -94,7 +94,7 @@ class DeckPipeline:
         self, item: DeckItemDTO, limit: int, sentence_lang: str, translation_lang: str
     ):
         lookup_word = item.normalized_word or item.raw_word
-        examples = self._context_generator.get_context_sentence(
+        examples = await self._context_generator.get_context_sentence(
             lookup_word, limit, sentence_lang, translation_lang
         )
         for ex in examples:

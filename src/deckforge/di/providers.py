@@ -132,7 +132,9 @@ class WordProcessingProvider(Provider):
 
     @provide(scope=Scope.APP)
     async def get_llm_client(self, config: Config) -> AsyncOpenAI:
-        return AsyncOpenAI(api_key=config.llm.api_key, base_url=config.llm.base_url)
+        return AsyncOpenAI(
+            api_key=config.llm.api_key.get_secret_value(), base_url=config.llm.base_url
+        )
 
 
 class SecurityProvider(Provider):
