@@ -52,6 +52,7 @@ class DeckPipeline:
                         task.options.get("limit", 1),
                         task.options.get("sentence_lang", "english"),
                         task.options.get("translation_lang", "russian"),
+                        task.options.get("difficulty", "B1"),
                     )
                     await self._deckitem_service.update_item(item)
 
@@ -91,11 +92,16 @@ class DeckPipeline:
         item.stage = "NORMILIZED"
 
     async def get_context_sentence(
-        self, item: DeckItemDTO, limit: int, sentence_lang: str, translation_lang: str
+        self,
+        item: DeckItemDTO,
+        limit: int,
+        sentence_lang: str,
+        translation_lang: str,
+        difficulty: str,
     ):
         lookup_word = item.normalized_word or item.raw_word
         examples = await self._context_generator.get_context_sentence(
-            lookup_word, limit, sentence_lang, translation_lang
+            lookup_word, limit, sentence_lang, translation_lang, difficulty
         )
         for ex in examples:
             item.sentence = ex[sentence_lang]

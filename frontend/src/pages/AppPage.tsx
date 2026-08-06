@@ -34,6 +34,7 @@ import type {
   DeckItemStatusValue,
   DeckTaskItemStatus,
   DeckTaskStatusValue,
+  DifficultyLevel,
 } from "../types/decks";
 
 type ViewState = "INPUT" | "PROCESSING" | "DONE";
@@ -143,6 +144,24 @@ const TRANSLATION_LANGUAGE_LABELS = {
   spanish: "Spanish",
   french: "French",
 } as const;
+
+const DIFFICULTY_LABELS: Record<DifficultyLevel, string> = {
+  A1: "A1 (Beginner)",
+  A2: "A2 (Elementary)",
+  B1: "B1 (Intermediate)",
+  B2: "B2 (Upper intermediate)",
+  C1: "C1 (Advanced)",
+  C2: "C2 (Proficiency)",
+};
+
+const DIFFICULTY_LEVELS: DifficultyLevel[] = [
+  "A1",
+  "A2",
+  "B1",
+  "B2",
+  "C1",
+  "C2",
+];
 
 function parseWords(raw: string): string[] {
   const uniqueWords: string[] = [];
@@ -462,6 +481,7 @@ function AppPage() {
   const [translationLang, setTranslationLang] = useState<
     "russian" | "english" | "german" | "spanish" | "french"
   >("russian");
+  const [difficulty, setDifficulty] = useState<DifficultyLevel>("B1");
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -548,6 +568,7 @@ function AppPage() {
           limit: cardsPerWord,
           sentence_lang: sentenceLang,
           translation_lang: translationLang,
+          difficulty,
         },
       });
 
@@ -1064,6 +1085,24 @@ function AppPage() {
                         </Select>
                       </FormControl>
                     </Stack>
+
+                    <FormControl fullWidth>
+                      <InputLabel id="difficulty-label">Language level</InputLabel>
+                      <Select
+                        labelId="difficulty-label"
+                        label="Language level"
+                        value={difficulty}
+                        onChange={(event) =>
+                          setDifficulty(event.target.value as DifficultyLevel)
+                        }
+                      >
+                        {DIFFICULTY_LEVELS.map((level) => (
+                          <MenuItem key={level} value={level}>
+                            {DIFFICULTY_LABELS[level]}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
                   </Stack>
                 </Paper>
 
@@ -1087,6 +1126,7 @@ function AppPage() {
                       `normalization: ${normalizationEnabled ? "enabled" : "disabled"}`,
                       `examples: ${SENTENCE_LANGUAGE_LABELS[sentenceLang]}`,
                       `translations: ${TRANSLATION_LANGUAGE_LABELS[translationLang]}`,
+                      `level: ${DIFFICULTY_LABELS[difficulty]}`,
                     ].map((line) => (
                       <Typography
                         key={line}

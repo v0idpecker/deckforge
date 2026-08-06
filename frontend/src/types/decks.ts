@@ -13,6 +13,8 @@ export type DeckItemStageValue =
   | "DONE"
   | null;
 
+export type DifficultyLevel = "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
+
 export type DeckTaskCreateRequest = {
   words: string[];
   options: {
@@ -20,6 +22,7 @@ export type DeckTaskCreateRequest = {
     limit: number;
     sentence_lang: "english" | "german" | "spanish" | "french" | "italian";
     translation_lang: "russian" | "english" | "german" | "spanish" | "french";
+    difficulty: DifficultyLevel;
   };
 };
 

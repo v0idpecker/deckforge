@@ -29,9 +29,9 @@ SYSTEM_PROMPT = """Ты — генератор учебных примеров �
 """
 
 
-def build_system_prompt(source_lang: str, target_lang: str):
+def build_system_prompt(source_lang: str, target_lang: str, difficulty: str):
     return SYSTEM_PROMPT.format(
-        source_lang=source_lang, target_lang=target_lang, difficulty=DEFAULT_DIFFICULTY
+        source_lang=source_lang, target_lang=target_lang, difficulty=difficulty
     )
 
 
@@ -55,9 +55,16 @@ class ContextGenerator:
         self._model = model
 
     async def get_context_sentence(
-        self, word: str, limit: int, sentence_lang: str, translation_lang: str
+        self,
+        word: str,
+        limit: int,
+        sentence_lang: str,
+        translation_lang: str,
+        difficulty: str,
     ) -> List[dict]:
-        items = await self.llm_request(sentence_lang, translation_lang, word, limit)
+        items = await self.llm_request(
+            sentence_lang, translation_lang, word, limit, difficulty
+        )
         return [
             {
                 sentence_lang: item.sentence,
@@ -67,11 +74,16 @@ class ContextGenerator:
         ]
 
     async def llm_request(
-        self, sentence_lang: str, translation_lang: str, word: str, limit: int
+        self,
+        sentence_lang: str,
+        translation_lang: str,
+        word: str,
+        limit: int,
+        difficulty: str,
     ) -> TranslationResponse:
         system_msg = ChatCompletionSystemMessageParam(
             role="system",
-            content=build_system_prompt(sentence_lang, translation_lang),
+            content=build_system_prompt(sentence_lang, translation_lang, difficulty),
         )
         user_msg = ChatCompletionUserMessageParam(
             role="user", content=build_user_prompt(word, limit)
