@@ -4,12 +4,12 @@ WORKDIR /app
 RUN --mount=type=cache,target=/var/cache/apt \
     apt-get update && apt-get install -y gcc
 
-RUN pip install poetry
 COPY pyproject.toml poetry.lock ./
 
-RUN --mount=type=cache,target=/root/.cache/pypoetry \
-    poetry config virtualenvs.create false && \
-    poetry install --only main --no-interaction --no-root
+RUN pip install poetry==2.1.4 poetry-plugin-export && \
+    poetry export --only main --no-interaction -f requirements.txt -o requirements.txt && \
+    pip install --no-cache-dir -r requirements.txt && \
+    rm requirements.txt
 
 COPY src/ ./src/
 COPY alembic/ ./alembic/
