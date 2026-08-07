@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Box,
@@ -51,82 +51,32 @@ const STAGE_LABELS: Record<Exclude<DeckItemStageValue, null>, string> = {
   DONE: "Done",
 };
 
-const HISTORY_STATUS_STYLES: Record<
-  DeckTaskStatusValue,
-  { label: string; background: string; color: string }
-> = {
-  PENDING: {
-    label: "Pending",
-    background: alpha("#171312", 0.06),
-    color: "#5f5347",
-  },
-  PROCESSING: {
-    label: "Processing",
-    background: alpha("#2358ff", 0.12),
-    color: "#1739ad",
-  },
-  DONE: {
-    label: "Done",
-    background: alpha("#2d8f5c", 0.14),
-    color: "#1d673f",
-  },
-  PARTIALLY_DONE: {
-    label: "Partial",
-    background: alpha("#f4c94f", 0.32),
-    color: "#8d5f00",
-  },
+const TASK_STATUS_LABELS: Record<DeckTaskStatusValue, string> = {
+  PENDING: "Queued",
+  PROCESSING: "Processing",
+  DONE: "Done",
+  PARTIALLY_DONE: "Partial",
 };
 
-const TASK_STATUS_META: Record<
-  DeckTaskStatusValue,
-  { label: string; description: string; accent: string }
-> = {
-  PENDING: {
-    label: "Queued",
-    description: "The request exists, but work has not started yet.",
-    accent: "#f4c94f",
-  },
-  PROCESSING: {
-    label: "Active",
-    description: "DeckForge is building contexts and translations right now.",
-    accent: "#2358ff",
-  },
-  DONE: {
-    label: "Ready",
-    description: "The package is complete and ready for download.",
-    accent: "#2d8f5c",
-  },
-  PARTIALLY_DONE: {
-    label: "Ready With Gaps",
-    description: "The package is ready, but some words did not finish cleanly.",
-    accent: "#f4c94f",
-  },
+const TASK_STATUS_COLORS: Record<DeckTaskStatusValue, string> = {
+  PENDING: "#64748b",
+  PROCESSING: "#2563eb",
+  DONE: "#10b981",
+  PARTIALLY_DONE: "#f59e0b",
 };
 
-const ITEM_STATUS_META: Record<
-  DeckItemStatusValue,
-  { label: string; accent: string; background: string }
-> = {
-  PENDING: {
-    label: "Pending",
-    accent: "#5f5347",
-    background: alpha("#171312", 0.06),
-  },
-  PROCESSING: {
-    label: "Processing",
-    accent: "#1739ad",
-    background: alpha("#2358ff", 0.1),
-  },
-  DONE: {
-    label: "Done",
-    accent: "#1d673f",
-    background: alpha("#2d8f5c", 0.12),
-  },
-  ERROR: {
-    label: "Failed",
-    accent: "#9f2e1f",
-    background: alpha("#d6452f", 0.12),
-  },
+const ITEM_STATUS_LABELS: Record<DeckItemStatusValue, string> = {
+  PENDING: "Pending",
+  PROCESSING: "Processing",
+  DONE: "Done",
+  ERROR: "Failed",
+};
+
+const ITEM_STATUS_COLORS: Record<DeckItemStatusValue, string> = {
+  PENDING: "#94a3b8",
+  PROCESSING: "#2563eb",
+  DONE: "#10b981",
+  ERROR: "#e11d48",
 };
 
 const SENTENCE_LANGUAGE_LABELS = {
@@ -223,244 +173,94 @@ function getRowLabel(item: DeckTaskItemStatus): string {
     return getProcessingSubtitle(item.stage);
   }
 
-  return ITEM_STATUS_META[item.status].label;
-}
-
-function SectionStamp({
-  children,
-  accent = "text.secondary",
-}: {
-  children: ReactNode;
-  accent?: string;
-}) {
-  return (
-    <Typography variant="overline" sx={{ color: accent }}>
-      {children}
-    </Typography>
-  );
-}
-
-function GlyphBadge({
-  children,
-  accent = "var(--signal-yellow)",
-}: {
-  children: ReactNode;
-  accent?: string;
-}) {
-  return (
-    <Paper
-      sx={{
-        width: 68,
-        height: 68,
-        borderRadius: "50%",
-        display: "grid",
-        placeItems: "center",
-        backgroundColor: accent,
-        flexShrink: 0,
-      }}
-    >
-      {children}
-    </Paper>
-  );
-}
-
-function MetricTile({
-  label,
-  value,
-  detail,
-  accent,
-}: {
-  label: string;
-  value: string;
-  detail?: string;
-  accent: string;
-}) {
-  return (
-    <Paper
-      sx={{
-        p: 2,
-        borderRadius: 4,
-        minHeight: 132,
-        backgroundColor: alpha("#ffffff", 0.58),
-      }}
-    >
-      <SectionStamp accent="text.secondary">{label}</SectionStamp>
-      <Typography
-        variant="h4"
-        sx={{
-          mt: 1.25,
-          color: accent,
-          fontSize: { xs: "2rem", md: "2.5rem" },
-        }}
-      >
-        {value}
-      </Typography>
-      {detail && (
-        <Typography variant="body2" sx={{ mt: 0.75, color: "text.secondary" }}>
-          {detail}
-        </Typography>
-      )}
-    </Paper>
-  );
-}
-
-function StatusPill({
-  label,
-  background,
-  color,
-}: {
-  label: string;
-  background: string;
-  color: string;
-}) {
-  return (
-    <Box
-      className="mono"
-      sx={{
-        px: 1.2,
-        py: 0.7,
-        borderRadius: 999,
-        border: "1.5px solid rgba(23, 19, 18, 0.85)",
-        backgroundColor: background,
-        color,
-        fontSize: 12,
-        display: "inline-flex",
-        alignItems: "center",
-      }}
-    >
-      {label}
-    </Box>
-  );
+  return ITEM_STATUS_LABELS[item.status];
 }
 
 function ForgeIcon() {
   return (
-    <SvgIcon viewBox="0 0 24 24" sx={{ fontSize: 28 }}>
+    <SvgIcon viewBox="0 0 24 24" sx={{ fontSize: 18 }}>
       <path d="M13 2l-1.7 6H7.5a.5.5 0 0 0-.41.79l3.77 5.39L9 22l7.91-11.21A.5.5 0 0 0 16.5 10h-3.8L14 2h-1z" />
-    </SvgIcon>
-  );
-}
-
-function StackIcon() {
-  return (
-    <SvgIcon viewBox="0 0 24 24" sx={{ fontSize: 24 }}>
-      <path d="M12 2L1 8l11 6 9-4.91V17h2V8L12 2zm0 14L4.74 12 3 12.95 12 18l9-5.05L19.26 12 12 16zm0 4L4.74 16 3 16.95 12 22l9-5.05L19.26 16 12 20z" />
     </SvgIcon>
   );
 }
 
 function DownloadIcon() {
   return (
-    <SvgIcon viewBox="0 0 24 24" sx={{ fontSize: 24 }}>
+    <SvgIcon viewBox="0 0 24 24" sx={{ fontSize: 22 }}>
       <path d="M5 20h14v-2H5v2zM11 4v8.17L8.41 9.59 7 11l5 5 5-5-1.41-1.41L13 12.17V4h-2z" />
     </SvgIcon>
   );
 }
 
 function WordStatusCard({ item }: { item: DeckTaskItemStatus }) {
-  const meta = ITEM_STATUS_META[item.status];
+  const color = ITEM_STATUS_COLORS[item.status];
 
   return (
-    <Paper
+    <Stack
+      direction="row"
+      spacing={1.5}
+      alignItems="center"
       sx={{
-        p: 1.6,
-        borderRadius: 4,
-        backgroundColor: alpha("#ffffff", 0.56),
+        py: 0.75,
+        px: 1.25,
+        borderRadius: 2,
+        backgroundColor: alpha(color, 0.06),
       }}
     >
-      <Stack direction="row" spacing={1.25} alignItems="flex-start">
-        <Box
-          sx={{
-            width: 12,
-            height: 12,
-            borderRadius: "50%",
-            backgroundColor: meta.accent,
-            mt: "6px",
-            flexShrink: 0,
-          }}
-        />
-        <Box sx={{ minWidth: 0, flex: 1 }}>
-          <Stack
-            direction={{ xs: "column", sm: "row" }}
-            spacing={1}
-            justifyContent="space-between"
-            alignItems={{ xs: "flex-start", sm: "center" }}
-          >
-            <Typography
-              className="mono"
-              sx={{
-                fontSize: 13,
-                wordBreak: "break-word",
-              }}
-            >
-              {item.raw_word}
-            </Typography>
-            <StatusPill
-              label={getRowLabel(item)}
-              background={meta.background}
-              color={meta.accent}
-            />
-          </Stack>
-        </Box>
-      </Stack>
-    </Paper>
+      <Box
+        sx={{
+          width: 8,
+          height: 8,
+          borderRadius: "50%",
+          backgroundColor: color,
+          flexShrink: 0,
+        }}
+      />
+      <Typography
+        className="mono"
+        title={item.raw_word}
+        sx={{
+          fontSize: 13,
+          flex: 1,
+          minWidth: 0,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {item.raw_word}
+      </Typography>
+      <Typography sx={{ fontSize: 12, fontWeight: 600, color, flexShrink: 0 }}>
+        {getRowLabel(item)}
+      </Typography>
+    </Stack>
   );
 }
 
-function ArchiveCard({
-  task,
-  onDownload,
+function CountTile({
+  label,
+  value,
+  color,
 }: {
-  task: DeckTaskHistoryItem;
-  onDownload: (deckId: string) => void;
+  label: string;
+  value: number;
+  color: string;
 }) {
-  const statusStyle = HISTORY_STATUS_STYLES[task.status] ?? {
-    label: task.status,
-    background: alpha("#171312", 0.06),
-    color: "#5f5347",
-  };
-  const canDownload =
-    task.status === "DONE" || task.status === "PARTIALLY_DONE";
-
   return (
-    <Paper
+    <Box
       sx={{
-        p: 2,
-        borderRadius: 4,
-        backgroundColor: alpha("#ffffff", 0.56),
-        display: "flex",
-        flexDirection: "column",
-        gap: 1.5,
+        p: 1.5,
+        borderRadius: 2,
+        backgroundColor: alpha(color, 0.08),
       }}
     >
-      <Stack direction="row" spacing={1} justifyContent="space-between">
-        <SectionStamp accent="text.secondary">Deck #{task.id.slice(0, 8)}</SectionStamp>
-        <StatusPill
-          label={statusStyle.label}
-          background={statusStyle.background}
-          color={statusStyle.color}
-        />
-      </Stack>
-      <Typography variant="h6">{task.total_items} source words</Typography>
       <Typography variant="body2" sx={{ color: "text.secondary" }}>
-        Stored in your archive and available for download when processing
-        finishes.
+        {label}
       </Typography>
-      {canDownload ? (
-        <Button
-          variant="outlined"
-          size="small"
-          onClick={() => onDownload(task.id)}
-          sx={{ alignSelf: "flex-start" }}
-        >
-          Download
-        </Button>
-      ) : (
-        <Typography className="mono" sx={{ fontSize: 12, color: "text.secondary" }}>
-          download unavailable until completion
-        </Typography>
-      )}
-    </Paper>
+      <Typography sx={{ mt: 0.5, fontSize: 22, fontWeight: 700, color }}>
+        {value}
+      </Typography>
+    </Box>
   );
 }
 
@@ -695,9 +495,6 @@ function AppPage() {
   const roundedProgress = Math.round(processingProgress);
   const hasStartedProcessing =
     taskStatus === "PROCESSING" || items.some((item) => item.status !== "PENDING");
-  const currentStatusMeta = taskStatus ? TASK_STATUS_META[taskStatus] : null;
-  const activeWordCount =
-    viewState === "INPUT" ? parsedWords.length : submittedWords.length;
 
   if (!hasToken) {
     return null;
@@ -706,207 +503,84 @@ function AppPage() {
   return (
     <Box
       sx={{
-        position: "relative",
         minHeight: "100vh",
-        overflow: "hidden",
-        py: { xs: 2.5, md: 4 },
+        py: { xs: 2, md: 4 },
+        background:
+          "radial-gradient(1000px 620px at 92% -12%, rgba(79, 70, 229, 0.06), transparent 60%), radial-gradient(900px 700px at -12% 112%, rgba(13, 148, 136, 0.05), transparent 60%)",
       }}
     >
-      <Box
-        className="float-slow"
-        sx={{
-          position: "absolute",
-          top: { xs: -50, md: 20 },
-          right: { xs: -60, md: 120 },
-          width: { xs: 180, md: 260 },
-          height: { xs: 180, md: 260 },
-          borderRadius: "50%",
-          background:
-            "radial-gradient(circle, rgba(255, 107, 44, 0.28), rgba(255, 107, 44, 0))",
-          pointerEvents: "none",
-        }}
-      />
-      <Box
-        className="float-slower"
-        sx={{
-          position: "absolute",
-          left: { xs: -70, md: 60 },
-          bottom: { xs: 160, md: 40 },
-          width: { xs: 220, md: 300 },
-          height: { xs: 220, md: 300 },
-          borderRadius: "50%",
-          background:
-            "radial-gradient(circle, rgba(35, 88, 255, 0.22), rgba(35, 88, 255, 0))",
-          pointerEvents: "none",
-        }}
-      />
-
-      <Container maxWidth="xl" sx={{ position: "relative", zIndex: 1 }}>
+      <Container maxWidth="lg">
         <Stack spacing={3}>
-          <Paper
-            className="poster-surface panel-reveal"
-            sx={{
-              p: { xs: 2.5, md: 3 },
-              borderRadius: { xs: 6, md: 8 },
-              background:
-                "linear-gradient(145deg, rgba(255,255,255,0.82), rgba(255,247,234,0.94))",
-            }}
+          <Stack
+            direction="row"
+            justifyContent="space-between"
+            alignItems="center"
           >
-            <Box
-              sx={{
-                display: "grid",
-                gridTemplateColumns: { xs: "1fr", xl: "minmax(0, 1.15fr) minmax(320px, 0.85fr)" },
-                gap: 2.5,
-                alignItems: "start",
-              }}
-            >
-              <Stack spacing={2.5}>
-                <Box
-                  sx={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    gap: 2,
-                    flexWrap: "wrap",
-                    alignItems: "center",
-                  }}
-                >
-                  <Stack direction="row" spacing={1.5} alignItems="center">
-                    <GlyphBadge>
-                      <ForgeIcon />
-                    </GlyphBadge>
-                    <Box>
-                      <SectionStamp>DeckForge Studio</SectionStamp>
-                      <Typography variant="h4" sx={{ mt: 0.35 }}>
-                        Word-to-deck workshop
-                      </Typography>
-                    </Box>
-                  </Stack>
-
-                  <Button variant="text" size="small" onClick={handleSignOut}>
-                    Sign out
-                  </Button>
-                </Box>
-
-                <Box>
-                  <Typography
-                    variant="h2"
-                    sx={{
-                      fontSize: { xs: "2.8rem", md: "4.8rem" },
-                      maxWidth: 860,
-                    }}
-                  >
-                    Same pipeline. Completely rebuilt{" "}
-                    <Box component="span" sx={{ color: "primary.main" }}>
-                      visual shell.
-                    </Box>
-                  </Typography>
-                  <Typography
-                    variant="body1"
-                    sx={{
-                      mt: 1.5,
-                      maxWidth: 720,
-                      color: "text.secondary",
-                      fontSize: { xs: 15, md: 17 },
-                    }}
-                  >
-                    Paste source words, shape generation options, watch the live
-                    queue, and pull down the resulting Anki package when the forge
-                    finishes.
-                  </Typography>
-                </Box>
-              </Stack>
-
+            <Stack direction="row" spacing={1.5} alignItems="center">
               <Box
                 sx={{
+                  width: 30,
+                  height: 30,
+                  borderRadius: 2,
+                  background:
+                    "linear-gradient(135deg, #0d9488, #4f46e5)",
+                  color: "#ffffff",
                   display: "grid",
-                  gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", sm: "repeat(4, minmax(0, 1fr))", xl: "repeat(2, minmax(0, 1fr))" },
-                  gap: 1.5,
+                  placeItems: "center",
                 }}
               >
-                <MetricTile
-                  label="Mode"
-                  value={
-                    viewState === "INPUT"
-                      ? "Draft"
-                      : viewState === "PROCESSING"
-                        ? "Forge"
-                        : "Ready"
-                  }
-                  detail="Current screen state"
-                  accent="var(--signal-blue)"
-                />
-                <MetricTile
-                  label="Word Count"
-                  value={String(activeWordCount)}
-                  detail="Active list size"
-                  accent="var(--signal)"
-                />
-                <MetricTile
-                  label="Archive"
-                  value={String(taskHistory.length)}
-                  detail="Saved deck tasks"
-                  accent="var(--signal-green)"
-                />
-                <MetricTile
-                  label="Output"
-                  value={`${cardsPerWord}x`}
-                  detail={`${SENTENCE_LANGUAGE_LABELS[sentenceLang]} examples`}
-                  accent="var(--signal-yellow)"
-                />
+                <ForgeIcon />
               </Box>
-            </Box>
-          </Paper>
+              <Typography variant="h6">DeckForge</Typography>
+            </Stack>
+            <Button variant="text" size="small" onClick={handleSignOut}>
+              Sign out
+            </Button>
+          </Stack>
 
-          {error && (
-            <Alert
-              severity="error"
-              sx={{
-                backgroundColor: alpha("#f7ddd7", 0.9),
-              }}
-            >
-              {error}
-            </Alert>
-          )}
+          {error && <Alert severity="error">{error}</Alert>}
 
           {viewState === "INPUT" && (
             <Box
               sx={{
                 display: "grid",
-                gridTemplateColumns: { xs: "1fr", xl: "minmax(0, 1.1fr) minmax(340px, 0.9fr)" },
+                gridTemplateColumns: {
+                  xs: "1fr",
+                  lg: "minmax(0, 1.2fr) minmax(340px, 0.8fr)",
+                },
                 gap: 3,
+                alignItems: "start",
               }}
             >
-              <Paper
-                className="poster-surface panel-reveal"
-                sx={{
-                  p: { xs: 2.5, md: 3.5 },
-                  borderRadius: { xs: 6, md: 8 },
-                  background:
-                    "linear-gradient(180deg, rgba(255,255,255,0.76), rgba(255, 107, 44, 0.08))",
-                }}
-              >
+              <Paper sx={{ p: { xs: 2.5, md: 3 } }}>
                 <Stack spacing={2.5}>
                   <Stack
-                    direction={{ xs: "column", sm: "row" }}
-                    spacing={2}
+                    direction="row"
                     justifyContent="space-between"
-                    alignItems={{ xs: "flex-start", sm: "center" }}
+                    alignItems="center"
                   >
-                    <Box>
-                      <SectionStamp>Input Deck Manifest</SectionStamp>
-                      <Typography variant="h4" sx={{ mt: 0.45 }}>
-                        Feed the wordlist
-                      </Typography>
-                    </Box>
-                    <StatusPill
-                      label={`${parsedWords.length} parsed`}
-                      background={alpha("#ff6b2c", 0.14)}
-                      color="#b64b17"
-                    />
+                    <Stack direction="row" spacing={1.5} alignItems="center">
+                      <Box
+                        sx={{
+                          width: 10,
+                          height: 10,
+                          borderRadius: "50%",
+                          backgroundColor: "primary.main",
+                        }}
+                      />
+                      <Typography variant="h6">Source words</Typography>
+                    </Stack>
+                    <Typography
+                      className="mono"
+                      variant="body2"
+                      sx={{ color: "primary.main" }}
+                    >
+                      {parsedWords.length} parsed
+                    </Typography>
                   </Stack>
 
                   <TextField
-                    label="Source words"
+                    label="Words"
                     placeholder={"apple\nrun\nlernen\nbonjour"}
                     multiline
                     minRows={10}
@@ -923,115 +597,60 @@ function AppPage() {
                     }}
                   />
 
-                  <Paper
-                    sx={{
-                      p: 2,
-                      borderRadius: 4,
-                      backgroundColor: alpha("#ffffff", 0.56),
-                    }}
-                  >
+                  {parsedWords.length > 0 && (
                     <Stack
-                      direction={{ xs: "column", md: "row" }}
-                      spacing={1.5}
-                      justifyContent="space-between"
-                      alignItems={{ xs: "flex-start", md: "center" }}
+                      direction="row"
+                      spacing={1}
+                      useFlexGap
+                      flexWrap="wrap"
                     >
-                      <Box>
-                        <SectionStamp accent="text.secondary">Parsed Inventory</SectionStamp>
-                        <Typography variant="body2" sx={{ mt: 0.5, color: "text.secondary" }}>
-                          Duplicates are removed before submission. Click a chip to
-                          remove it from the draft.
-                        </Typography>
-                      </Box>
-                      <Typography className="mono" sx={{ fontSize: 12, color: "text.secondary" }}>
-                        separators: newline / comma
-                      </Typography>
+                      {parsedWords.map((word) => (
+                        <Chip
+                          key={word}
+                          label={word}
+                          onDelete={() => handleDeleteChip(word)}
+                        />
+                      ))}
                     </Stack>
-
-                    {parsedWords.length === 0 ? (
-                      <Typography variant="body2" sx={{ mt: 2, color: "text.secondary" }}>
-                        No words parsed yet. Paste anything rough; cleanup happens here.
-                      </Typography>
-                    ) : (
-                      <Stack
-                        direction="row"
-                        spacing={1}
-                        useFlexGap
-                        flexWrap="wrap"
-                        sx={{ mt: 2 }}
-                      >
-                        {parsedWords.map((word) => (
-                          <Chip
-                            key={word}
-                            label={word}
-                            onDelete={() => handleDeleteChip(word)}
-                          />
-                        ))}
-                      </Stack>
-                    )}
-                  </Paper>
+                  )}
                 </Stack>
               </Paper>
 
               <Stack spacing={3}>
-                <Paper
-                  className="poster-surface panel-reveal"
-                  sx={{
-                    p: { xs: 2.5, md: 3 },
-                    borderRadius: { xs: 6, md: 8 },
-                    background:
-                      "linear-gradient(180deg, rgba(255,255,255,0.8), rgba(35, 88, 255, 0.08))",
-                  }}
-                >
+                <Paper sx={{ p: { xs: 2.5, md: 3 } }}>
                   <Stack spacing={2.5}>
                     <Stack direction="row" spacing={1.5} alignItems="center">
-                      <GlyphBadge accent="var(--signal-blue)">
-                        <StackIcon />
-                      </GlyphBadge>
-                      <Box>
-                        <SectionStamp>Generation Controls</SectionStamp>
-                        <Typography variant="h5" sx={{ mt: 0.4 }}>
-                          Shape the deck
-                        </Typography>
-                      </Box>
+                      <Box
+                        sx={{
+                          width: 10,
+                          height: 10,
+                          borderRadius: "50%",
+                          backgroundColor: "secondary.main",
+                        }}
+                      />
+                      <Typography variant="h6">Options</Typography>
                     </Stack>
 
-                    <Paper
-                      sx={{
-                        p: 2,
-                        borderRadius: 4,
-                        backgroundColor: alpha("#ffffff", 0.54),
-                      }}
-                    >
-                      <FormControlLabel
-                        control={
-                          <Switch
-                            checked={normalizationEnabled}
-                            onChange={(event) =>
-                              setNormalizationEnabled(event.target.checked)
-                            }
-                          />
-                        }
-                        label="Normalize words before lookup"
-                      />
-                      <Typography
-                        variant="body2"
-                        sx={{ mt: 0.75, ml: { xs: 0, sm: 5.5 }, color: "text.secondary" }}
-                      >
-                        Useful for inflected forms such as “running” to “run”.
-                      </Typography>
-                    </Paper>
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={normalizationEnabled}
+                          onChange={(event) =>
+                            setNormalizationEnabled(event.target.checked)
+                          }
+                        />
+                      }
+                      label="Normalize words"
+                    />
 
-                    <Paper
-                      sx={{
-                        p: 2,
-                        borderRadius: 4,
-                        backgroundColor: alpha("#ffffff", 0.54),
-                      }}
-                    >
-                      <Stack direction="row" justifyContent="space-between" spacing={1}>
-                        <SectionStamp accent="text.secondary">Cards Per Word</SectionStamp>
-                        <Typography className="mono" sx={{ fontSize: 12 }}>
+                    <Box>
+                      <Stack
+                        direction="row"
+                        justifyContent="space-between"
+                        alignItems="center"
+                      >
+                        <Typography variant="body2">Cards per word</Typography>
+                        <Typography className="mono" variant="body2">
                           {cardsPerWord}
                         </Typography>
                       </Stack>
@@ -1041,53 +660,62 @@ function AppPage() {
                         step={1}
                         value={cardsPerWord}
                         onChange={(_, value) => setCardsPerWord(value as number)}
-                        sx={{ mt: 1.75 }}
+                        sx={{ mt: 1 }}
                       />
-                    </Paper>
-
-                    <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-                      <FormControl fullWidth>
-                        <InputLabel id="sentence-lang-label">Example language</InputLabel>
-                        <Select
-                          labelId="sentence-lang-label"
-                          label="Example language"
-                          value={sentenceLang}
-                          onChange={(event) =>
-                            setSentenceLang(event.target.value as typeof sentenceLang)
-                          }
-                        >
-                          <MenuItem value="english">English</MenuItem>
-                          <MenuItem value="german">German</MenuItem>
-                          <MenuItem value="spanish">Spanish</MenuItem>
-                          <MenuItem value="french">French</MenuItem>
-                          <MenuItem value="italian">Italian</MenuItem>
-                        </Select>
-                      </FormControl>
-                      <FormControl fullWidth>
-                        <InputLabel id="translation-lang-label">
-                          Translation language
-                        </InputLabel>
-                        <Select
-                          labelId="translation-lang-label"
-                          label="Translation language"
-                          value={translationLang}
-                          onChange={(event) =>
-                            setTranslationLang(
-                              event.target.value as typeof translationLang,
-                            )
-                          }
-                        >
-                          <MenuItem value="russian">Russian</MenuItem>
-                          <MenuItem value="english">English</MenuItem>
-                          <MenuItem value="german">German</MenuItem>
-                          <MenuItem value="spanish">Spanish</MenuItem>
-                          <MenuItem value="french">French</MenuItem>
-                        </Select>
-                      </FormControl>
-                    </Stack>
+                    </Box>
 
                     <FormControl fullWidth>
-                      <InputLabel id="difficulty-label">Language level</InputLabel>
+                      <InputLabel id="sentence-lang-label">
+                        Example language
+                      </InputLabel>
+                      <Select
+                        labelId="sentence-lang-label"
+                        label="Example language"
+                        value={sentenceLang}
+                        onChange={(event) =>
+                          setSentenceLang(
+                            event.target.value as typeof sentenceLang,
+                          )
+                        }
+                      >
+                        {Object.entries(SENTENCE_LANGUAGE_LABELS).map(
+                          ([value, label]) => (
+                            <MenuItem key={value} value={value}>
+                              {label}
+                            </MenuItem>
+                          ),
+                        )}
+                      </Select>
+                    </FormControl>
+
+                    <FormControl fullWidth>
+                      <InputLabel id="translation-lang-label">
+                        Translation language
+                      </InputLabel>
+                      <Select
+                        labelId="translation-lang-label"
+                        label="Translation language"
+                        value={translationLang}
+                        onChange={(event) =>
+                          setTranslationLang(
+                            event.target.value as typeof translationLang,
+                          )
+                        }
+                      >
+                        {Object.entries(TRANSLATION_LANGUAGE_LABELS).map(
+                          ([value, label]) => (
+                            <MenuItem key={value} value={value}>
+                              {label}
+                            </MenuItem>
+                          ),
+                        )}
+                      </Select>
+                    </FormControl>
+
+                    <FormControl fullWidth>
+                      <InputLabel id="difficulty-label">
+                        Language level
+                      </InputLabel>
                       <Select
                         labelId="difficulty-label"
                         label="Language level"
@@ -1107,49 +735,37 @@ function AppPage() {
                 </Paper>
 
                 <Paper
-                  className="poster-surface panel-reveal"
                   sx={{
                     p: { xs: 2.5, md: 3 },
-                    borderRadius: { xs: 6, md: 8 },
-                    background:
-                      "linear-gradient(180deg, rgba(23,19,18,0.96), rgba(23,19,18,0.92))",
-                    color: "#fff7ea",
+                    backgroundColor: alpha("#f59e0b", 0.04),
+                    borderColor: alpha("#f59e0b", 0.22),
                   }}
                 >
-                  <SectionStamp accent="rgba(255, 247, 234, 0.66)">Current Manifest</SectionStamp>
-                  <Typography variant="h5" sx={{ mt: 0.6, color: "#fff7ea" }}>
-                    Ready to launch
-                  </Typography>
-                  <Stack spacing={1} sx={{ mt: 2.5 }}>
-                    {[
-                      `words: ${parsedWords.length}`,
-                      `normalization: ${normalizationEnabled ? "enabled" : "disabled"}`,
-                      `examples: ${SENTENCE_LANGUAGE_LABELS[sentenceLang]}`,
-                      `translations: ${TRANSLATION_LANGUAGE_LABELS[translationLang]}`,
-                      `level: ${DIFFICULTY_LABELS[difficulty]}`,
-                    ].map((line) => (
-                      <Typography
-                        key={line}
-                        className="mono"
-                        sx={{ fontSize: 12, color: "rgba(255, 247, 234, 0.74)" }}
-                      >
-                        {line}
-                      </Typography>
-                    ))}
+                  <Stack spacing={2}>
+                    <Typography
+                      className="mono"
+                      variant="body2"
+                      sx={{ color: "text.secondary" }}
+                    >
+                      {parsedWords.length} words ·{" "}
+                      {SENTENCE_LANGUAGE_LABELS[sentenceLang]} →{" "}
+                      {TRANSLATION_LANGUAGE_LABELS[translationLang]} ·{" "}
+                      {DIFFICULTY_LABELS[difficulty]}
+                    </Typography>
+                    <Button
+                      variant="contained"
+                      size="large"
+                      fullWidth
+                      onClick={handleGenerateDeck}
+                      disabled={parsedWords.length === 0 || isSubmitting}
+                    >
+                      {isSubmitting ? (
+                        <CircularProgress size={20} color="inherit" />
+                      ) : (
+                        "Generate Deck"
+                      )}
+                    </Button>
                   </Stack>
-                  <Button
-                    variant="contained"
-                    size="large"
-                    onClick={handleGenerateDeck}
-                    disabled={parsedWords.length === 0 || isSubmitting}
-                    sx={{ mt: 3, minWidth: 220 }}
-                  >
-                    {isSubmitting ? (
-                      <CircularProgress size={18} color="inherit" />
-                    ) : (
-                      "Generate Deck"
-                    )}
-                  </Button>
                 </Paper>
               </Stack>
             </Box>
@@ -1159,154 +775,125 @@ function AppPage() {
             <Box
               sx={{
                 display: "grid",
-                gridTemplateColumns: { xs: "1fr", xl: "minmax(0, 0.95fr) minmax(340px, 1.05fr)" },
+                gridTemplateColumns: {
+                  xs: "1fr",
+                  lg: "minmax(0, 0.9fr) minmax(340px, 1.1fr)",
+                },
                 gap: 3,
+                alignItems: "start",
               }}
             >
-              <Paper
-                className="poster-surface panel-reveal"
-                sx={{
-                  p: { xs: 2.5, md: 3.5 },
-                  borderRadius: { xs: 6, md: 8 },
-                  background:
-                    "linear-gradient(180deg, rgba(255,255,255,0.84), rgba(244, 201, 79, 0.16))",
-                }}
-              >
-                <Stack spacing={2.5}>
+              <Paper sx={{ p: { xs: 2.5, md: 4 } }}>
+                <Stack spacing={3}>
                   <Stack
-                    direction={{ xs: "column", sm: "row" }}
-                    spacing={2}
+                    direction="row"
                     justifyContent="space-between"
-                    alignItems={{ xs: "flex-start", sm: "center" }}
+                    alignItems="center"
                   >
-                    <Box>
-                      <SectionStamp>Forge Status</SectionStamp>
-                      <Typography variant="h4" sx={{ mt: 0.4 }}>
-                        {currentStatusMeta?.label ?? "Starting"}
-                      </Typography>
-                    </Box>
-                    <GlyphBadge accent={currentStatusMeta?.accent ?? "var(--signal-yellow)"}>
-                      {hasStartedProcessing ? <CircularProgress size={28} color="inherit" /> : <ForgeIcon />}
-                    </GlyphBadge>
+                    <Typography
+                      variant="h6"
+                      sx={{
+                        color: taskStatus
+                          ? TASK_STATUS_COLORS[taskStatus]
+                          : undefined,
+                      }}
+                    >
+                      {taskStatus
+                        ? TASK_STATUS_LABELS[taskStatus]
+                        : "Queued"}
+                    </Typography>
+                    {hasStartedProcessing && (
+                      <CircularProgress size={20} color="inherit" />
+                    )}
                   </Stack>
-
-                  <Typography variant="body1" sx={{ color: "text.secondary", maxWidth: 540 }}>
-                    {currentStatusMeta?.description ??
-                      "The task has been submitted and is waiting for the first worker cycle."}
-                  </Typography>
 
                   <Typography
                     variant="h1"
-                    sx={{
-                      fontSize: { xs: "4rem", md: "6rem" },
-                      lineHeight: 0.9,
-                    }}
+                    sx={{ fontSize: { xs: "3.5rem", md: "5rem" }, lineHeight: 1 }}
                   >
                     {roundedProgress}
-                    <Box component="span" sx={{ color: "primary.main" }}>
+                    <Box
+                      component="span"
+                      sx={{
+                        color: "primary.main",
+                        fontSize: "0.5em",
+                      }}
+                    >
                       %
                     </Box>
                   </Typography>
 
-                  <Box>
-                    <LinearProgress
-                      variant="determinate"
-                      value={processingProgress}
-                      sx={{
-                        "& .MuiLinearProgress-bar": {
-                          background:
-                            "linear-gradient(90deg, var(--signal), var(--signal-yellow))",
-                        },
-                      }}
-                    />
-                    <Stack
-                      direction={{ xs: "column", sm: "row" }}
-                      spacing={1.5}
-                      justifyContent="space-between"
-                      sx={{ mt: 1 }}
-                    >
-                      <Typography className="mono" sx={{ fontSize: 12, color: "text.secondary" }}>
-                        {doneItems}/{totalItems} words fully finished
-                      </Typography>
-                      {taskStatus && (
-                        <StatusPill
-                          label={TASK_STATUS_META[taskStatus].label}
-                          background={alpha(TASK_STATUS_META[taskStatus].accent, 0.18)}
-                          color="#171312"
-                        />
-                      )}
-                    </Stack>
-                  </Box>
+                  <LinearProgress
+                    variant="determinate"
+                    value={processingProgress}
+                  />
 
                   <Box
                     sx={{
                       display: "grid",
                       gridTemplateColumns: {
                         xs: "repeat(2, minmax(0, 1fr))",
-                        md: "repeat(4, minmax(0, 1fr))",
+                        sm: "repeat(4, minmax(0, 1fr))",
                       },
                       gap: 1.5,
                     }}
                   >
-                    <MetricTile
+                    <CountTile
                       label="Done"
-                      value={String(doneItems)}
-                      accent="var(--signal-green)"
+                      value={doneItems}
+                      color="#10b981"
                     />
-                    <MetricTile
+                    <CountTile
                       label="Running"
-                      value={String(processingItems)}
-                      accent="var(--signal-blue)"
+                      value={processingItems}
+                      color="#2563eb"
                     />
-                    <MetricTile
+                    <CountTile
                       label="Queued"
-                      value={String(pendingItems)}
-                      accent="var(--signal-yellow)"
+                      value={pendingItems}
+                      color="#94a3b8"
                     />
-                    <MetricTile
+                    <CountTile
                       label="Failed"
-                      value={String(errorItems)}
-                      accent="var(--signal-red)"
+                      value={errorItems}
+                      color="#e11d48"
                     />
                   </Box>
                 </Stack>
               </Paper>
 
-              <Paper
-                className="poster-surface panel-reveal"
-                sx={{
-                  p: { xs: 2.5, md: 3 },
-                  borderRadius: { xs: 6, md: 8 },
-                  background:
-                    "linear-gradient(180deg, rgba(255,255,255,0.78), rgba(35, 88, 255, 0.08))",
-                }}
-              >
+              <Paper sx={{ p: { xs: 2.5, md: 3 } }}>
                 <Stack spacing={2}>
-                  <Box
-                    sx={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      gap: 2,
-                      flexWrap: "wrap",
-                      alignItems: "center",
-                    }}
-                  >
-                    <Box>
-                      <SectionStamp>Live Queue</SectionStamp>
-                      <Typography variant="h5" sx={{ mt: 0.5 }}>
-                        Word-by-word ledger
-                      </Typography>
-                    </Box>
-                    <Typography className="mono" sx={{ fontSize: 12, color: "text.secondary" }}>
-                      polling every 2.5s
-                    </Typography>
-                  </Box>
                   <Stack
-                    spacing={1.2}
+                    direction="row"
+                    justifyContent="space-between"
+                    alignItems="center"
+                  >
+                    <Stack direction="row" spacing={1.5} alignItems="center">
+                      <Box
+                        sx={{
+                          width: 10,
+                          height: 10,
+                          borderRadius: "50%",
+                          backgroundColor: "info.main",
+                        }}
+                      />
+                      <Typography variant="h6">Queue</Typography>
+                    </Stack>
+                    <Typography
+                      className="mono"
+                      variant="body2"
+                      sx={{ color: "text.secondary" }}
+                    >
+                      {doneItems}/{totalItems} done
+                    </Typography>
+                  </Stack>
+                  <Stack
+                    spacing={1}
                     sx={{
-                      maxHeight: { xs: "none", xl: 620 },
+                      maxHeight: { xs: "none", xl: 520 },
                       overflowY: "auto",
-                      pr: { xl: 0.5 },
+                      pr: 0.5,
                     }}
                   >
                     {items.map((item, index) => (
@@ -1322,93 +909,44 @@ function AppPage() {
           )}
 
           {viewState === "DONE" && (
-            <Box
-              sx={{
-                display: "grid",
-                gridTemplateColumns: { xs: "1fr", xl: "minmax(0, 0.9fr) minmax(340px, 1.1fr)" },
-                gap: 3,
-              }}
-            >
+            <>
               <Paper
-                className="poster-surface panel-reveal"
                 sx={{
-                  p: { xs: 2.5, md: 3.5 },
-                  borderRadius: { xs: 6, md: 8 },
-                  background:
-                    "linear-gradient(180deg, rgba(255,255,255,0.82), rgba(45, 143, 92, 0.14))",
+                  p: { xs: 3, md: 4 },
+                  textAlign: "center",
+                  backgroundColor: alpha("#10b981", 0.03),
+                  borderColor: alpha("#10b981", 0.22),
                 }}
               >
-                <Stack spacing={2.5}>
-                  <Stack
-                    direction={{ xs: "column", sm: "row" }}
-                    spacing={2}
-                    justifyContent="space-between"
-                    alignItems={{ xs: "flex-start", sm: "center" }}
-                  >
-                    <Box>
-                      <SectionStamp>Deck Output</SectionStamp>
-                      <Typography variant="h4" sx={{ mt: 0.4 }}>
-                        Ready for import
-                      </Typography>
-                    </Box>
-                    <GlyphBadge accent="var(--signal-green)">
-                      <DownloadIcon />
-                    </GlyphBadge>
-                  </Stack>
-
-                  <Typography
-                    variant="h2"
-                    sx={{
-                      fontSize: { xs: "3rem", md: "4.4rem" },
-                      maxWidth: 520,
-                    }}
-                  >
-                    {successfulCards} cards are boxed and waiting.
-                  </Typography>
-                  <Typography variant="body1" sx={{ color: "text.secondary", maxWidth: 560 }}>
-                    Download the generated `.apkg`, import it into Anki, and start
-                    studying immediately.
-                  </Typography>
-
-                  {isPartiallyDone && (
-                    <Alert
-                      severity="warning"
-                      sx={{
-                        backgroundColor: alpha("#ffefc6", 0.92),
-                      }}
-                    >
-                      Deck is ready, but some words failed during processing.
-                    </Alert>
-                  )}
-
+                <Stack spacing={2} alignItems="center">
                   <Box
                     sx={{
+                      width: 48,
+                      height: 48,
+                      borderRadius: "50%",
+                      backgroundColor: "success.main",
+                      color: "#ffffff",
                       display: "grid",
-                      gridTemplateColumns: {
-                        xs: "repeat(2, minmax(0, 1fr))",
-                        md: "repeat(3, minmax(0, 1fr))",
-                      },
-                      gap: 1.5,
+                      placeItems: "center",
                     }}
                   >
-                    <MetricTile
-                      label="Succeeded"
-                      value={String(doneItems)}
-                      accent="var(--signal-green)"
-                    />
-                    <MetricTile
-                      label="Failed"
-                      value={String(errorItems)}
-                      accent="var(--signal-red)"
-                    />
-                    <MetricTile
-                      label="Submitted"
-                      value={String(totalItems)}
-                      accent="var(--signal-blue)"
-                    />
+                    <DownloadIcon />
                   </Box>
-
-                  <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
+                  <Typography variant="h4">Deck ready</Typography>
+                  <Typography variant="body1" sx={{ color: "text.secondary" }}>
+                    {successfulCards} cards generated
+                    {isPartiallyDone && " · some words failed"}.
+                  </Typography>
+                  {isPartiallyDone && (
+                    <Alert severity="warning">
+                      Some words failed during processing.
+                    </Alert>
+                  )}
+                  <Stack
+                    direction={{ xs: "column", sm: "row" }}
+                    spacing={1.5}
+                    sx={{ mt: 2 }}
+                  >
                     <Button
                       variant="contained"
                       size="large"
@@ -1416,58 +954,50 @@ function AppPage() {
                       disabled={isDownloading || !taskId}
                     >
                       {isDownloading ? (
-                        <CircularProgress size={18} color="inherit" />
+                        <CircularProgress size={20} color="inherit" />
                       ) : (
-                        "Download Deck"
+                        "Download .apkg"
                       )}
                     </Button>
-                    <Button variant="outlined" size="large" onClick={handleCreateAnother}>
-                      Create Another
+                    <Button
+                      variant="outlined"
+                      size="large"
+                      onClick={handleCreateAnother}
+                    >
+                      Create another
                     </Button>
                   </Stack>
                 </Stack>
               </Paper>
 
-              <Paper
-                className="poster-surface panel-reveal"
-                sx={{
-                  p: { xs: 2.5, md: 3 },
-                  borderRadius: { xs: 6, md: 8 },
-                  background:
-                    "linear-gradient(180deg, rgba(255,255,255,0.8), rgba(244, 201, 79, 0.1))",
-                }}
-              >
+              <Paper sx={{ p: { xs: 2.5, md: 3 } }}>
                 <Stack spacing={2}>
-                  <Box
-                    sx={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      gap: 2,
-                      flexWrap: "wrap",
-                      alignItems: "center",
-                    }}
-                  >
-                    <Box>
-                      <SectionStamp>Final Ledger</SectionStamp>
-                      <Typography variant="h5" sx={{ mt: 0.5 }}>
-                        Completion map
-                      </Typography>
-                    </Box>
-                    {taskStatus && (
-                      <StatusPill
-                        label={TASK_STATUS_META[taskStatus].label}
-                        background={alpha(TASK_STATUS_META[taskStatus].accent, 0.18)}
-                        color="#171312"
-                      />
-                    )}
-                  </Box>
                   <Stack
-                    spacing={1.2}
-                    sx={{
-                      maxHeight: { xs: "none", xl: 620 },
-                      overflowY: "auto",
-                      pr: { xl: 0.5 },
-                    }}
+                    direction="row"
+                    justifyContent="space-between"
+                    alignItems="center"
+                  >
+                    <Stack direction="row" spacing={1.5} alignItems="center">
+                      <Box
+                        sx={{
+                          width: 10,
+                          height: 10,
+                          borderRadius: "50%",
+                          backgroundColor: "success.main",
+                        }}
+                      />
+                      <Typography variant="h6">Words</Typography>
+                    </Stack>
+                    <Typography
+                      variant="body2"
+                      sx={{ color: "text.secondary" }}
+                    >
+                      {doneItems} done · {errorItems} failed
+                    </Typography>
+                  </Stack>
+                  <Stack
+                    spacing={1}
+                    sx={{ maxHeight: 440, overflowY: "auto", pr: 0.5 }}
                   >
                     {items.map((item, index) => (
                       <WordStatusCard
@@ -1478,59 +1008,73 @@ function AppPage() {
                   </Stack>
                 </Stack>
               </Paper>
-            </Box>
+            </>
           )}
 
           {taskHistory.length > 0 && (
-            <Paper
-              className="poster-surface panel-reveal"
-              sx={{
-                p: { xs: 2.5, md: 3 },
-                borderRadius: { xs: 6, md: 8 },
-                background:
-                  "linear-gradient(180deg, rgba(255,255,255,0.78), rgba(35, 88, 255, 0.06))",
-              }}
-            >
-              <Stack spacing={2.5}>
-                <Box
-                  sx={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    gap: 2,
-                    flexWrap: "wrap",
-                    alignItems: "center",
-                  }}
-                >
-                  <Box>
-                    <SectionStamp>Archive</SectionStamp>
-                    <Typography variant="h5" sx={{ mt: 0.5 }}>
-                      Previous deck runs
-                    </Typography>
-                  </Box>
-                  <Typography className="mono" sx={{ fontSize: 12, color: "text.secondary" }}>
-                    {taskHistory.length} saved tasks
-                  </Typography>
-                </Box>
-
-                <Box
-                  sx={{
-                    display: "grid",
-                    gridTemplateColumns: {
-                      xs: "1fr",
-                      md: "repeat(2, minmax(0, 1fr))",
-                      xl: "repeat(3, minmax(0, 1fr))",
-                    },
-                    gap: 1.5,
-                  }}
-                >
+            <Paper sx={{ p: { xs: 2.5, md: 3 } }}>
+              <Stack spacing={2}>
+                <Stack direction="row" spacing={1.5} alignItems="center">
+                  <Box
+                    sx={{
+                      width: 10,
+                      height: 10,
+                      borderRadius: "50%",
+                      backgroundColor: "warning.main",
+                    }}
+                  />
+                  <Typography variant="h6">Previous decks</Typography>
+                </Stack>
+                <Stack spacing={0}>
                   {taskHistory.map((task) => (
-                    <ArchiveCard
+                    <Stack
                       key={task.id}
-                      task={task}
-                      onDownload={handleHistoryDownload}
-                    />
+                      direction="row"
+                      spacing={2}
+                      alignItems="center"
+                      justifyContent="space-between"
+                      sx={{
+                        py: 1.25,
+                        borderBottom: "1px solid",
+                        borderColor: "divider",
+                        "&:last-of-type": { borderBottom: "none" },
+                      }}
+                    >
+                      <Stack direction="row" spacing={2} alignItems="center">
+                        <Typography className="mono" variant="body2">
+                          #{task.id.slice(0, 8)}
+                        </Typography>
+                        <Typography
+                          variant="body2"
+                          sx={{ color: "text.secondary" }}
+                        >
+                          {task.total_items} words
+                        </Typography>
+                      </Stack>
+                      <Stack direction="row" spacing={1.5} alignItems="center">
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            color: TASK_STATUS_COLORS[task.status],
+                            fontWeight: 600,
+                          }}
+                        >
+                          {TASK_STATUS_LABELS[task.status]}
+                        </Typography>
+                        {(task.status === "DONE" ||
+                          task.status === "PARTIALLY_DONE") && (
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            onClick={() => handleHistoryDownload(task.id)}
+                          >
+                            Download
+                          </Button>
+                        )}
+                      </Stack>
+                    </Stack>
                   ))}
-                </Box>
+                </Stack>
               </Stack>
             </Paper>
           )}

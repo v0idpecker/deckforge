@@ -1,115 +1,107 @@
 import { alpha, createTheme } from "@mui/material/styles";
 
-const ink = "#171312";
-const paper = "#f4ead7";
-const paperBright = "#fff7ea";
-const orange = "#ff6b2c";
-const blue = "#2358ff";
-const yellow = "#f4c94f";
-const moss = "#2d8f5c";
-const brick = "#d6452f";
+const ink = "#151a21";
+const muted = "#5a6472";
+const border = "#dde3ea";
+
+const teal = "#0d9488";
+const tealHover = "#0f766e";
+const indigo = "#4f46e5";
+const indigoDark = "#4338ca";
 
 export const theme = createTheme({
   palette: {
     mode: "light",
     primary: {
-      main: orange,
-      light: "#ff8d5f",
-      dark: "#cc4f19",
-      contrastText: ink,
+      main: teal,
+      light: "#2dd4bf",
+      dark: "#115e59",
+      contrastText: "#ffffff",
     },
     secondary: {
-      main: blue,
-      light: "#6b8bff",
-      dark: "#1436ad",
+      main: indigo,
+      light: "#6366f1",
+      dark: indigoDark,
       contrastText: "#ffffff",
     },
     background: {
-      default: paper,
-      paper: paperBright,
+      default: "#f3f5f7",
+      paper: "#ffffff",
     },
     text: {
       primary: ink,
-      secondary: "#5f5347",
+      secondary: muted,
     },
-    divider: alpha(ink, 0.16),
+    divider: border,
     error: {
-      main: brick,
-      light: "#f7ddd7",
+      main: "#e11d48",
+      light: "#ffe4e6",
     },
     warning: {
-      main: "#b97700",
-      light: "#ffefc6",
+      main: "#f59e0b",
+      light: "#fef3c7",
     },
     success: {
-      main: moss,
-      light: "#dbefe1",
+      main: "#10b981",
+      light: "#d1fae5",
+    },
+    info: {
+      main: "#2563eb",
+      light: "#dbeafe",
     },
   },
   shape: {
-    borderRadius: 24,
+    borderRadius: 10,
   },
   typography: {
-    fontFamily: '"Space Grotesk", "Segoe UI", sans-serif',
+    fontFamily: '"Inter", "Segoe UI", sans-serif',
     h1: {
-      fontFamily: '"Bricolage Grotesque", "Space Grotesk", sans-serif',
-      fontWeight: 800,
-      letterSpacing: "-0.05em",
-      lineHeight: 0.95,
-    },
-    h2: {
-      fontFamily: '"Bricolage Grotesque", "Space Grotesk", sans-serif',
-      fontWeight: 800,
-      letterSpacing: "-0.045em",
-      lineHeight: 0.98,
-    },
-    h3: {
-      fontFamily: '"Bricolage Grotesque", "Space Grotesk", sans-serif',
-      fontWeight: 700,
-      letterSpacing: "-0.04em",
-      lineHeight: 1,
-    },
-    h4: {
-      fontFamily: '"Bricolage Grotesque", "Space Grotesk", sans-serif',
       fontWeight: 700,
       letterSpacing: "-0.03em",
-      lineHeight: 1.05,
+      lineHeight: 1.12,
+    },
+    h2: {
+      fontWeight: 700,
+      letterSpacing: "-0.025em",
+      lineHeight: 1.15,
+    },
+    h3: {
+      fontWeight: 700,
+      letterSpacing: "-0.02em",
+      lineHeight: 1.2,
+    },
+    h4: {
+      fontWeight: 700,
+      letterSpacing: "-0.02em",
+      lineHeight: 1.25,
     },
     h5: {
-      fontFamily: '"Bricolage Grotesque", "Space Grotesk", sans-serif',
-      fontWeight: 700,
-      letterSpacing: "-0.02em",
-      lineHeight: 1.1,
+      fontWeight: 600,
+      letterSpacing: "-0.015em",
+      lineHeight: 1.3,
     },
     h6: {
-      fontFamily: '"Bricolage Grotesque", "Space Grotesk", sans-serif',
-      fontWeight: 700,
-      letterSpacing: "-0.02em",
-      lineHeight: 1.1,
-    },
-    subtitle1: {
-      fontWeight: 700,
+      fontWeight: 600,
       letterSpacing: "-0.01em",
+      lineHeight: 1.3,
     },
     body1: {
       lineHeight: 1.6,
-      letterSpacing: "-0.01em",
     },
     body2: {
       lineHeight: 1.55,
-      letterSpacing: "-0.01em",
     },
     overline: {
       fontFamily: '"IBM Plex Mono", ui-monospace, monospace',
-      fontWeight: 600,
-      letterSpacing: "0.16em",
+      fontWeight: 500,
+      fontSize: 11,
+      letterSpacing: "0.1em",
       textTransform: "uppercase",
     },
     button: {
-      fontFamily: '"Space Grotesk", "Segoe UI", sans-serif',
-      fontWeight: 700,
-      letterSpacing: "0.04em",
-      textTransform: "uppercase",
+      fontWeight: 600,
+      letterSpacing: "0.01em",
+      textTransform: "none",
     },
   },
   components: {
@@ -117,73 +109,51 @@ export const theme = createTheme({
       styleOverrides: {
         body: {
           color: ink,
-          backgroundColor: paper,
-        },
-        "::selection": {
-          backgroundColor: alpha(yellow, 0.8),
-          color: ink,
+          backgroundColor: "#f3f5f7",
         },
       },
     },
     MuiPaper: {
       styleOverrides: {
         root: {
-          border: `2px solid ${alpha(ink, 0.82)}`,
-          backgroundImage: [
-            `radial-gradient(circle at top right, ${alpha(yellow, 0.14)}, transparent 38%)`,
-            `linear-gradient(180deg, ${alpha("#ffffff", 0.7)}, ${alpha(
-              paperBright,
-              0.96,
-            )})`,
-          ].join(","),
-          boxShadow: `10px 10px 0 ${alpha(ink, 0.14)}`,
-          transition:
-            "transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease",
+          backgroundImage: "none",
+          border: `1px solid ${border}`,
+          boxShadow: "0 1px 2px rgba(16, 24, 40, 0.04)",
         },
       },
     },
     MuiButton: {
+      defaultProps: {
+        disableElevation: true,
+      },
       styleOverrides: {
         root: {
-          minHeight: 52,
-          borderRadius: 999,
-          paddingInline: 24,
-          borderWidth: 2,
-          borderStyle: "solid",
-          boxShadow: "none",
-          transition:
-            "transform 140ms ease, box-shadow 140ms ease, background-color 140ms ease, color 140ms ease",
-          "&:hover": {
-            transform: "translate(-2px, -2px)",
-            boxShadow: `6px 6px 0 ${alpha(ink, 0.22)}`,
-          },
+          minHeight: 40,
+          borderRadius: 8,
+          paddingInline: 16,
         },
         containedPrimary: {
-          borderColor: alpha(ink, 0.92),
-          backgroundColor: orange,
-          color: ink,
           "&:hover": {
-            backgroundColor: "#ff7a43",
+            backgroundColor: tealHover,
           },
         },
         containedSecondary: {
-          borderColor: alpha(ink, 0.92),
           "&:hover": {
-            backgroundColor: "#3e6dff",
+            backgroundColor: indigoDark,
           },
         },
         outlined: {
-          borderColor: alpha(ink, 0.92),
+          borderColor: border,
           color: ink,
-          backgroundColor: alpha("#ffffff", 0.44),
+          "&:hover": {
+            borderColor: ink,
+            backgroundColor: alpha(ink, 0.03),
+          },
         },
         text: {
-          borderColor: "transparent",
-          paddingInline: 8,
+          color: ink,
           "&:hover": {
             backgroundColor: alpha(ink, 0.05),
-            boxShadow: "none",
-            transform: "none",
           },
         },
       },
@@ -191,71 +161,68 @@ export const theme = createTheme({
     MuiChip: {
       styleOverrides: {
         root: {
-          minHeight: 34,
-          borderRadius: 999,
-          border: `1.5px solid ${alpha(ink, 0.75)}`,
-          backgroundColor: alpha("#ffffff", 0.56),
+          height: 28,
+          borderRadius: 6,
+          backgroundColor: "#eef0f3",
           color: ink,
           fontFamily: '"IBM Plex Mono", ui-monospace, monospace',
+          fontSize: 12,
           fontWeight: 500,
-          letterSpacing: "0.02em",
+          "&:hover": {
+            backgroundColor: "#e2e5ea",
+          },
         },
         deleteIcon: {
-          color: alpha(ink, 0.72),
+          color: muted,
+          "&:hover": {
+            color: ink,
+          },
         },
       },
     },
     MuiOutlinedInput: {
       styleOverrides: {
         root: {
-          borderRadius: 22,
-          backgroundColor: alpha("#ffffff", 0.48),
-          transition:
-            "transform 140ms ease, box-shadow 140ms ease, background-color 140ms ease",
+          borderRadius: 8,
+          backgroundColor: "#ffffff",
           "& .MuiOutlinedInput-notchedOutline": {
-            borderWidth: 2,
-            borderColor: alpha(ink, 0.75),
+            borderColor: border,
           },
           "&:hover .MuiOutlinedInput-notchedOutline": {
-            borderColor: ink,
-          },
-          "&.Mui-focused": {
-            boxShadow: `0 0 0 4px ${alpha(blue, 0.12)}`,
+            borderColor: "#c3ccd6",
           },
           "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-            borderColor: blue,
+            borderColor: teal,
+            borderWidth: 1,
           },
         },
         input: {
-          paddingTop: 15,
-          paddingBottom: 15,
+          paddingTop: 12,
+          paddingBottom: 12,
         },
       },
     },
     MuiInputLabel: {
       styleOverrides: {
         root: {
-          fontWeight: 700,
-          letterSpacing: "0.01em",
+          fontWeight: 500,
         },
       },
     },
     MuiAlert: {
       styleOverrides: {
         root: {
-          borderRadius: 24,
-          border: `2px solid ${alpha(ink, 0.85)}`,
-          color: ink,
+          borderRadius: 8,
+          boxShadow: "none",
         },
       },
     },
     MuiLinearProgress: {
       styleOverrides: {
         root: {
-          height: 12,
+          height: 6,
           borderRadius: 999,
-          overflow: "hidden",
-          backgroundColor: alpha(ink, 0.08),
+          backgroundColor: "#e2e5ea",
         },
         bar: {
           borderRadius: 999,
@@ -265,21 +232,19 @@ export const theme = createTheme({
     MuiSlider: {
       styleOverrides: {
         root: {
-          color: orange,
+          color: teal,
         },
         rail: {
           opacity: 1,
-          backgroundColor: alpha(ink, 0.12),
+          backgroundColor: "#d5dae1",
         },
         track: {
           border: "none",
         },
         thumb: {
-          width: 18,
-          height: 18,
-          border: `2px solid ${ink}`,
+          width: 16,
+          height: 16,
           boxShadow: "none",
-          backgroundColor: yellow,
         },
       },
     },
@@ -287,29 +252,23 @@ export const theme = createTheme({
       styleOverrides: {
         switchBase: {
           "&.Mui-checked": {
-            color: ink,
+            color: "#ffffff",
           },
           "&.Mui-checked + .MuiSwitch-track": {
-            backgroundColor: yellow,
+            backgroundColor: teal,
             opacity: 1,
           },
         },
-        thumb: {
-          backgroundColor: paperBright,
-          border: `2px solid ${ink}`,
-        },
         track: {
           opacity: 1,
-          borderRadius: 999,
-          backgroundColor: alpha(ink, 0.18),
+          backgroundColor: "#d5dae1",
         },
       },
     },
     MuiMenuItem: {
       styleOverrides: {
         root: {
-          borderRadius: 16,
-          margin: 4,
+          minHeight: 36,
         },
       },
     },
