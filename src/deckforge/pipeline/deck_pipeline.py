@@ -4,9 +4,9 @@ from deckforge.adapters.anki import AnkiAdapter
 from deckforge.adapters.context_generator import ContextGenerator
 from deckforge.adapters.errors import ExternalServiceError
 from deckforge.adapters.normalizer import Normalizer
+from deckforge.dto.deck_item import DeckItemDTO
 from deckforge.services.decks.deckitem import DeckItemSerivce
 from deckforge.services.decks.decktask import DeckTaskService
-from deckforge.services.dto import DeckItemDTO
 from deckforge.services.errors import ServiceError
 
 

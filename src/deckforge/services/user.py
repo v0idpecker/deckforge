@@ -7,7 +7,7 @@ from deckforge.db.errors import (
     DAOInvalidInputError,
     DAONotFoundError,
 )
-from deckforge.services.dto import UserCreateDTO, UserDTO
+from deckforge.dto.user import UserCreateDTO, UserDTO
 from deckforge.services.errors import (
     ConflictError,
     InvalidInputError,

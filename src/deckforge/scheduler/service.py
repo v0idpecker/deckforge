@@ -3,7 +3,6 @@ from sqlalchemy.ext.asyncio.session import AsyncSession, async_sessionmaker
 
 from deckforge.db.dao.outbox import OutboxEventDAO
 from deckforge.services.decks.decktask import DeckTaskService
-from deckforge.services.dto import OutboxEventCreateDTO
 
 
 class RetryScheduler:

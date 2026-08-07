@@ -12,7 +12,7 @@ from jwt.exceptions import ExpiredSignatureError, InvalidTokenError
 from deckforge.adapters.errors import ExternalServiceError
 from deckforge.adapters.security import GoogleOAuthAdapter, JWTAdapter
 from deckforge.config import Config
-from deckforge.services.dto import UserCreateDTO, UserDTO
+from deckforge.dto.user import UserCreateDTO, UserDTO
 from deckforge.services.errors import NotFoundError
 from deckforge.services.user import UserService
 

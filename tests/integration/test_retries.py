@@ -8,9 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from deckforge.adapters.errors import ExternalServiceError
 from deckforge.db.models.decks import DeckItem, DeckTask
 from deckforge.db.models.outbox import EventStatus, OutboxEvent
+from deckforge.dto.user import UserDTO
 from deckforge.pipeline.deck_pipeline import DeckPipeline
 from deckforge.scheduler.service import RetryScheduler
-from deckforge.services.dto import UserDTO
 
 pytestmark = pytest.mark.asyncio
 

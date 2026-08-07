@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from deckforge.db.models.decks import DeckItem, DeckTask
 from deckforge.db.models.outbox import EventStatus, OutboxEvent
 from deckforge.db.models.user import User
-from deckforge.services.dto import UserDTO
+from deckforge.dto.user import UserDTO
 
 pytestmark = pytest.mark.asyncio
 

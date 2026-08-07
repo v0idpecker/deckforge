@@ -14,8 +14,9 @@ from deckforge.api.schemas import (
     DeckTaskResponce,
     DeckTaskStatusResponse,
 )
+from deckforge.dto.deck_task import DeckTaskCreateDTO
+from deckforge.dto.user import UserDTO
 from deckforge.services.decks.decktask import DeckTaskService
-from deckforge.services.dto import DeckTaskCreateDTO, UserDTO
 from deckforge.services.errors import NotFoundError
 
 router = APIRouter(

@@ -11,7 +11,7 @@ from deckforge.db.errors import (
     DAOInvalidInputError,
 )
 from deckforge.db.models.outbox import EventStatus, OutboxEvent
-from deckforge.services.dto import OutboxEventCreateDTO, OutboxEventDTO
+from deckforge.dto.outbox_event import OutboxEventCreateDTO, OutboxEventDTO
 
 
 class OutboxEventDAO:

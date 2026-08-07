@@ -11,7 +11,7 @@ from sqlalchemy.sql import select
 
 from deckforge.adapters.errors import ExternalServiceError
 from deckforge.db.models.user import User
-from deckforge.services.dto import UserDTO
+from deckforge.dto.user import UserDTO
 
 pytestmark = pytest.mark.asyncio
 

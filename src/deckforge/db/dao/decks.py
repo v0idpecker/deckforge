@@ -19,12 +19,8 @@ from deckforge.db.errors import (
     DAONotFoundError,
 )
 from deckforge.db.models.decks import DeckItem, DeckTask
-from deckforge.services.dto import (
-    DeckItemCreateDTO,
-    DeckItemDTO,
-    DeckTaskCreateDTO,
-    DeckTaskDTO,
-)
+from deckforge.dto.deck_item import DeckItemCreateDTO, DeckItemDTO
+from deckforge.dto.deck_task import DeckTaskCreateDTO, DeckTaskDTO
 
 
 class DeckTaskDAO:

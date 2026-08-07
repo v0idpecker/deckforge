@@ -8,7 +8,7 @@ from deckforge.db.errors import (
     DAOIntegrityError,
     DAOInvalidInputError,
 )
-from deckforge.services.dto import DeckItemCreateDTO, DeckItemDTO
+from deckforge.dto.deck_item import DeckItemCreateDTO, DeckItemDTO
 from deckforge.services.errors import (
     ConflictError,
     InvalidInputError,

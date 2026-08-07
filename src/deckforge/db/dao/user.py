@@ -11,7 +11,7 @@ from deckforge.db.errors import (
     DAONotFoundError,
 )
 from deckforge.db.models.user import User
-from deckforge.services.dto import UserCreateDTO, UserDTO
+from deckforge.dto.user import UserCreateDTO, UserDTO
 
 
 class UserDAO:

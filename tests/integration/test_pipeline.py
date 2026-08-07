@@ -8,8 +8,8 @@ from sqlalchemy.sql.expression import select
 
 from deckforge.adapters.errors import ExternalServiceError
 from deckforge.db.models.decks import DeckItem, DeckTask
+from deckforge.dto.user import UserDTO
 from deckforge.pipeline.deck_pipeline import DeckPipeline
-from deckforge.services.dto import UserDTO
 from deckforge.services.errors import NotFoundError
 
 pytestmark = pytest.mark.asyncio

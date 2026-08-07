@@ -14,13 +14,9 @@ from deckforge.db.errors import (
     DAOMultipleResultsError,
     DAONotFoundError,
 )
-from deckforge.services.dto import (
-    DeckItemCreateDTO,
-    DeckItemDTO,
-    DeckTaskCreateDTO,
-    DeckTaskDTO,
-    OutboxEventCreateDTO,
-)
+from deckforge.dto.deck_item import DeckItemCreateDTO, DeckItemDTO
+from deckforge.dto.deck_task import DeckTaskCreateDTO, DeckTaskDTO
+from deckforge.dto.outbox_event import OutboxEventCreateDTO
 from deckforge.services.errors import (
     ConflictError,
     DataAccessError,
