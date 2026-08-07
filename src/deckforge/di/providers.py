@@ -2,6 +2,7 @@ from typing import AsyncIterable
 
 from dishka import Provider, Scope, from_context, provide
 from faststream.rabbit.broker import RabbitBroker
+from httpx import AsyncClient
 from nltk.stem.wordnet import WordNetLemmatizer
 from openai import AsyncOpenAI
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -147,3 +148,7 @@ class SecurityProvider(Provider):
     @provide(scope=Scope.REQUEST)
     async def get_jwt_adapter(self, config: Config) -> JWTAdapter:
         return JWTAdapter(config.security)
+
+
+class HTTPProvder(Provider):
+    client = provide(AsyncClient, scope=Scope.APP)
