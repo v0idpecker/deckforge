@@ -2,7 +2,7 @@ import datetime
 import uuid
 from typing import List
 
-from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql.sqltypes import INT, JSON, TEXT, UUID, DateTime
 
@@ -64,7 +64,7 @@ class DeckItem(Base):
         onupdate=datetime.datetime.now,
     )
     deck_task: Mapped["DeckTask"] = relationship(back_populates="deck_items")
-    deck_card: Mapped["DeckCard"] = relationship(back_populates="deck_item")
+    deck_cards: Mapped[List["DeckCard"]] = relationship(back_populates="deck_item")
 
 
 class DeckCard(Base):
@@ -74,15 +74,15 @@ class DeckCard(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     task_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("deck_tasks.id"))
-    deck_item_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("deck_items.id"), unique=True
-    )
+    item_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("deck_items.id"))
     word: Mapped[str] = mapped_column(TEXT, nullable=False)
     sentence: Mapped[str] = mapped_column(TEXT, nullable=False)
     translation: Mapped[str] = mapped_column(TEXT, nullable=False)
-    position: Mapped[int] = mapped_column(INT, nullable=False, unique=True)
+    position: Mapped[int] = mapped_column(INT, nullable=False)
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime, nullable=False, default=datetime.datetime.now
     )
     deck_task: Mapped["DeckTask"] = relationship(back_populates="deck_cards")
-    deck_item: Mapped["DeckCard"] = relationship(back_populates="deck_card")
+    deck_item: Mapped["DeckItem"] = relationship(back_populates="deck_cards")
+
+    __table_args__ = UniqueConstraint("item_id", "position", name="uix_card_position")

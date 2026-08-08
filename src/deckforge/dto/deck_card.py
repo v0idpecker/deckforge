@@ -25,3 +25,13 @@ class DeckCardDTO:
             translation=entity.translation,
             position=entity.position,
         )
+
+
+@dataclass
+class DeckCardCreateDTO:
+    task_id: uuid.UUID
+    item_id: uuid.UUID
+    word: str
+    sentence: str
+    translation: str
+    position: int

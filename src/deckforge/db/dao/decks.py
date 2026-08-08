@@ -2,6 +2,7 @@ import datetime
 from typing import List
 from uuid import UUID
 
+from sqlalchemy import delete
 from sqlalchemy.exc import (
     DataError,
     IntegrityError,
@@ -18,7 +19,8 @@ from deckforge.db.errors import (
     DAOMultipleResultsError,
     DAONotFoundError,
 )
-from deckforge.db.models.decks import DeckItem, DeckTask
+from deckforge.db.models.decks import DeckCard, DeckItem, DeckTask
+from deckforge.dto.deck_card import DeckCardCreateDTO, DeckCardDTO
 from deckforge.dto.deck_item import DeckItemCreateDTO, DeckItemDTO
 from deckforge.dto.deck_task import DeckTaskCreateDTO, DeckTaskDTO
 
@@ -250,5 +252,74 @@ class DeckItemDAO:
                 )
             )
             await session.execute(stmt)
+        except SQLAlchemyError as e:
+            raise DAOError(f"Unexpected database error: {e}")
+
+
+class DeckCardDAO:
+    async def list(self, session: AsyncSession) -> List[DeckCardDTO]:
+        try:
+            res = await session.execute(select(DeckCard))
+            values = res.scalars().all()
+            return [DeckCardDTO.from_entity(value) for value in values]
+        except SQLAlchemyError as e:
+            raise DAOError(f"Unexpected database error: {e}")
+
+    async def create(
+        self, data: DeckCardCreateDTO, session: AsyncSession
+    ) -> DeckCardDTO:
+        try:
+            card = DeckCard(
+                task_id=data.task_id,
+                item_id=data.item_id,
+                word=data.word,
+                sentence=data.sentence,
+                translation=data.translation,
+                position=data.position,
+            )
+            session.add(card)
+            return DeckCardDTO.from_entity(card)
+        except DataError as e:
+            raise DAOInvalidInputError(f"Invalid input data: {e}")
+        except IntegrityError as e:
+            raise DAOIntegrityError(f"Data integrity error: {e}")
+        except SQLAlchemyError as e:
+            raise DAOError(f"Unexpected database error: {e}")
+
+    async def list_by_task(
+        self, session: AsyncSession, task_id: UUID
+    ) -> List[DeckCardDTO]:
+        try:
+            stmt = (
+                select(DeckCard)
+                .where(DeckCard.task_id == task_id)
+                .order_by(DeckCard.created_at)
+            )
+            res = await session.execute(stmt)
+            cards = res.scalars().all()
+
+            return [DeckCardDTO.from_entity(card) for card in cards]
+        except SQLAlchemyError as e:
+            raise DAOError(f"Unexpected database error: {e}")
+
+    async def replace_for_item(
+        self, session: AsyncSession, item_id: UUID, cards: List[DeckCardDTO]
+    ):
+        try:
+            delete_stmt = delete(DeckCard).where(DeckCard.item_id == item_id)
+            await session.execute(delete_stmt)
+
+            new_cards = [
+                DeckCard(
+                    task_id=card.task_id,
+                    item_id=item_id,
+                    word=card.word,
+                    sentence=card.sentence,
+                    translation=card.translation,
+                    position=i,
+                )
+                for i, card in enumerate(cards)
+            ]
+            session.add_all(new_cards)
         except SQLAlchemyError as e:
             raise DAOError(f"Unexpected database error: {e}")
