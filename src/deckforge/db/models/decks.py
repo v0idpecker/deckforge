@@ -36,6 +36,7 @@ class DeckTask(Base):
     next_retry_at: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=True)
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
     deck_items: Mapped[List["DeckItem"]] = relationship(back_populates="deck_task")
+    deck_cards: Mapped[List["DeckCard"]] = relationship(back_populates="deck_task")
     user: Mapped["User"] = relationship(back_populates="tasks")
 
 
@@ -63,3 +64,25 @@ class DeckItem(Base):
         onupdate=datetime.datetime.now,
     )
     deck_task: Mapped["DeckTask"] = relationship(back_populates="deck_items")
+    deck_card: Mapped["DeckCard"] = relationship(back_populates="deck_item")
+
+
+class DeckCard(Base):
+    __tablename__ = "deck_cards"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    task_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("deck_tasks.id"))
+    deck_item_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("deck_items.id"), unique=True
+    )
+    word: Mapped[str] = mapped_column(TEXT, nullable=False)
+    sentence: Mapped[str] = mapped_column(TEXT, nullable=False)
+    translation: Mapped[str] = mapped_column(TEXT, nullable=False)
+    position: Mapped[int] = mapped_column(INT, nullable=False, unique=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime, nullable=False, default=datetime.datetime.now
+    )
+    deck_task: Mapped["DeckTask"] = relationship(back_populates="deck_cards")
+    deck_item: Mapped["DeckCard"] = relationship(back_populates="deck_card")
