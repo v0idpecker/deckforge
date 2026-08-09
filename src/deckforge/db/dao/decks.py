@@ -298,12 +298,15 @@ class DeckCardDAO:
             res = await session.execute(stmt)
             cards = res.scalars().all()
 
+            if cards == []:
+                raise DAONotFoundError("No cards found")
+
             return [DeckCardDTO.from_entity(card) for card in cards]
         except SQLAlchemyError as e:
             raise DAOError(f"Unexpected database error: {e}")
 
     async def replace_for_item(
-        self, session: AsyncSession, item_id: UUID, cards: List[DeckCardDTO]
+        self, session: AsyncSession, item_id: UUID, cards: List[DeckCardCreateDTO]
     ):
         try:
             delete_stmt = delete(DeckCard).where(DeckCard.item_id == item_id)
@@ -321,5 +324,6 @@ class DeckCardDAO:
                 for i, card in enumerate(cards)
             ]
             session.add_all(new_cards)
+            await session.flush()
         except SQLAlchemyError as e:
             raise DAOError(f"Unexpected database error: {e}")

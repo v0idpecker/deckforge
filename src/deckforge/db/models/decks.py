@@ -85,4 +85,6 @@ class DeckCard(Base):
     deck_task: Mapped["DeckTask"] = relationship(back_populates="deck_cards")
     deck_item: Mapped["DeckItem"] = relationship(back_populates="deck_cards")
 
-    __table_args__ = UniqueConstraint("item_id", "position", name="uix_card_position")
+    __table_args__ = (
+        UniqueConstraint("item_id", "position", name="uix_card_position"),
+    )

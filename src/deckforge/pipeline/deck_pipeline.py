@@ -58,8 +58,8 @@ class DeckPipeline:
                         task.options.get("translation_lang", "russian"),
                         task.options.get("difficulty", "B1"),
                     )
-                    await self._deckitem_service.update_item(item)
                     await self._deckcard_service.replace_for_item(item.id, cards)
+                    await self._deckitem_service.update_item(item)
 
             except ExternalServiceError:
                 await self.set_error_status(item)
@@ -69,10 +69,6 @@ class DeckPipeline:
 
             await self.set_done_status(item)
             await self._deckitem_service.update_item(item)
-
-            self._anki.export_deck(str(task_id))
-
-            print(item.__dict__)
 
         task_status = "PARTIALLY_DONE" if has_errors else "DONE"
         await self._decktask_service.complete_task(task_id, task_status)

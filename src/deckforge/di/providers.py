@@ -1,8 +1,7 @@
-from typing import AsyncIterable
+from typing import TYPE_CHECKING, AsyncIterable
 
 from dishka import Provider, Scope, from_context, provide
 from faststream.rabbit.broker import RabbitBroker
-from httpx import AsyncClient
 from nltk.stem.wordnet import WordNetLemmatizer
 from openai import AsyncOpenAI
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -13,11 +12,12 @@ from deckforge.adapters.context_generator import ContextGenerator
 from deckforge.adapters.normalizer import Normalizer
 from deckforge.adapters.security import GoogleOAuthAdapter, JWTAdapter
 from deckforge.config import Config
-from deckforge.db.dao.decks import DeckItemDAO, DeckTaskDAO
+from deckforge.db.dao.decks import DeckCardDAO, DeckItemDAO, DeckTaskDAO
 from deckforge.db.dao.outbox import OutboxEventDAO
 from deckforge.db.dao.user import UserDAO
 from deckforge.db.sessionmaker import new_sessionmaker
 from deckforge.pipeline.deck_pipeline import DeckPipeline
+from deckforge.services.decks.deckcard import DeckCardService
 from deckforge.services.decks.deckitem import DeckItemSerivce
 from deckforge.services.decks.decktask import DeckTaskService
 from deckforge.services.user import UserService
@@ -41,21 +41,11 @@ class DBProvider(Provider):
 
 
 class DAOProvider(Provider):
-    @provide(scope=Scope.REQUEST)
-    async def get_decktask_dao(self) -> DeckTaskDAO:
-        return DeckTaskDAO()
-
-    @provide(scope=Scope.REQUEST)
-    async def get_deckitem_dao(self) -> DeckItemDAO:
-        return DeckItemDAO()
-
-    @provide(scope=Scope.REQUEST)
-    async def get_user_dao(self) -> UserDAO:
-        return UserDAO()
-
-    @provide(scope=Scope.REQUEST)
-    async def get_outbox_event_dao(self) -> OutboxEventDAO:
-        return OutboxEventDAO()
+    decktask_dao = provide(DeckTaskDAO, scope=Scope.REQUEST)
+    deckitem_dao = provide(DeckItemDAO, scope=Scope.REQUEST)
+    deckcard_dao = provide(DeckCardDAO, scope=Scope.REQUEST)
+    user_dao = provide(UserDAO, scope=Scope.REQUEST)
+    outbox_event_dao = provide(OutboxEventDAO, scope=Scope.REQUEST)
 
 
 class AMQPProvider(Provider):
@@ -94,6 +84,12 @@ class ServiceProvider(Provider):
     ) -> UserService:
         return UserService(sessionmaker, user_dao)
 
+    @provide(scope=Scope.REQUEST)
+    async def get_deckcard_service(
+        self, sessionmaker: async_sessionmaker[AsyncSession], deckcard_dao: DeckCardDAO
+    ) -> DeckCardService:
+        return DeckCardService(deckcard_dao, sessionmaker)
+
 
 class PipelineProvider(Provider):
     config = from_context(provides=Config, scope=Scope.APP)
@@ -103,6 +99,7 @@ class PipelineProvider(Provider):
         self,
         decktask_service: DeckTaskService,
         deckitem_service: DeckItemSerivce,
+        deckcard_service: DeckCardService,
         normalizer: Normalizer,
         context_generator: ContextGenerator,
         anki: AnkiAdapter,
@@ -110,6 +107,7 @@ class PipelineProvider(Provider):
         return DeckPipeline(
             decktask_service,
             deckitem_service,
+            deckcard_service,
             normalizer,
             context_generator,
             anki,
@@ -151,4 +149,7 @@ class SecurityProvider(Provider):
 
 
 class HTTPProvder(Provider):
-    client = provide(AsyncClient, scope=Scope.APP)
+    if TYPE_CHECKING:
+        from httpx import AsyncClient
+
+        client = provide(AsyncClient, scope=Scope.APP)
