@@ -27,3 +27,16 @@ class DeckTaskResponce(BaseModel):
     id: uuid.UUID
     status: str
     total_items: int
+
+
+class DeckCardResponse(BaseModel):
+    id: uuid.UUID
+    word: str
+    sentence: str
+    translation: str
+
+
+class DeckCardsResponse(BaseModel):
+    task_id: uuid.UUID
+    suggested_deck_name: str
+    cards: list[DeckCardResponse]

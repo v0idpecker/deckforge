@@ -10,8 +10,6 @@ from pydantic import BaseModel
 
 from deckforge.adapters.errors import ExternalServiceError
 
-DEFAULT_DIFFICULTY = "intermediate (B1-B2)"
-
 SYSTEM_PROMPT = """Ты — генератор учебных примеров для карточек Anki.
 По заданному слову генерируешь указанное количество примеров предложений
 на языке {source_lang} с переводом на {target_lang}.
