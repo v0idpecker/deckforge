@@ -1,4 +1,5 @@
 import type {
+  DeckCardsResponse,
   DeckTaskCreateRequest,
   DeckTaskCreateResponse,
   DeckTaskHistoryItem,
@@ -103,6 +104,61 @@ export async function listDeckTasks(): Promise<DeckTaskHistoryItem[]> {
       total_items: payload.total_items,
     };
   });
+}
+
+export async function getDeckCards(taskId: string): Promise<DeckCardsResponse> {
+  const rawResponse = await request<unknown>(`/decks/${taskId}/cards`, {
+    method: "GET",
+  });
+
+  if (
+    typeof rawResponse !== "object" ||
+    rawResponse === null ||
+    !("task_id" in rawResponse) ||
+    typeof rawResponse.task_id !== "string" ||
+    !("suggested_deck_name" in rawResponse) ||
+    typeof rawResponse.suggested_deck_name !== "string" ||
+    !("cards" in rawResponse) ||
+    !Array.isArray(rawResponse.cards)
+  ) {
+    throw new ApiError("Invalid deck cards response format", 500);
+  }
+
+  const payload = rawResponse as {
+    task_id: string;
+    suggested_deck_name: string;
+    cards: unknown[];
+  };
+
+  const cards = payload.cards.map((card) => {
+    if (
+      typeof card !== "object" ||
+      card === null ||
+      !("id" in card) ||
+      typeof card.id !== "string" ||
+      !("word" in card) ||
+      typeof card.word !== "string" ||
+      !("sentence" in card) ||
+      typeof card.sentence !== "string" ||
+      !("translation" in card) ||
+      typeof card.translation !== "string"
+    ) {
+      throw new ApiError("Invalid deck cards response format", 500);
+    }
+
+    return {
+      id: card.id,
+      word: card.word,
+      sentence: card.sentence,
+      translation: card.translation,
+    };
+  });
+
+  return {
+    task_id: payload.task_id,
+    suggested_deck_name: payload.suggested_deck_name,
+    cards,
+  };
 }
 
 function getFilenameFromHeaders(headers: Headers): string | null {

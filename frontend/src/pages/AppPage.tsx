@@ -28,6 +28,7 @@ import {
   getDeckTaskStatus,
   listDeckTasks,
 } from "../api/decks";
+import { SendToAnkiDialog } from "../components/SendToAnkiDialog";
 import type {
   DeckTaskHistoryItem,
   DeckItemStageValue,
@@ -287,6 +288,7 @@ function AppPage() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [taskHistory, setTaskHistory] = useState<DeckTaskHistoryItem[]>([]);
+  const [ankiDialogOpen, setAnkiDialogOpen] = useState(false);
 
   const parsedWords = useMemo(() => parseWords(wordsInput), [wordsInput]);
 
@@ -959,6 +961,15 @@ function AppPage() {
                         "Download .apkg"
                       )}
                     </Button>
+                    {successfulCards > 0 && (
+                      <Button
+                        variant="outlined"
+                        size="large"
+                        onClick={() => setAnkiDialogOpen(true)}
+                      >
+                        Send to Anki
+                      </Button>
+                    )}
                     <Button
                       variant="outlined"
                       size="large"
@@ -1078,6 +1089,12 @@ function AppPage() {
               </Stack>
             </Paper>
           )}
+
+          <SendToAnkiDialog
+            open={ankiDialogOpen}
+            taskId={taskId}
+            onClose={() => setAnkiDialogOpen(false)}
+          />
         </Stack>
       </Container>
     </Box>

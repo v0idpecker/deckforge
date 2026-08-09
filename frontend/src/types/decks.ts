@@ -46,3 +46,16 @@ export type DeckTaskHistoryItem = {
   status: DeckTaskStatusValue;
   total_items: number;
 };
+
+export type DeckCard = {
+  id: string;
+  word: string;
+  sentence: string;
+  translation: string;
+};
+
+export type DeckCardsResponse = {
+  task_id: string;
+  suggested_deck_name: string;
+  cards: DeckCard[];
+};
