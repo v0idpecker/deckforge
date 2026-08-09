@@ -59,3 +59,10 @@ export type DeckCardsResponse = {
   suggested_deck_name: string;
   cards: DeckCard[];
 };
+
+export type EditableCard = {
+  card: DeckCard;
+  selected: boolean;
+  sentence: string;
+  translation: string;
+};

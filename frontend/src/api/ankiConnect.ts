@@ -1,5 +1,3 @@
-import type { DeckCard } from "../types/decks";
-
 const ANKI_BASE_URL = "http://127.0.0.1:8765";
 
 const MODEL_NAME = "DeckForge Basic";
@@ -116,13 +114,15 @@ export async function ensureDeckForgeModel(): Promise<void> {
 }
 
 /**
- * Отправляет все карточки одним батчем addNotes.
+ * Отправляет отобранные карточки одним батчем addNotes.
+ * Принимает только то, что реально нужно AnkiConnect — пары текст/перевод:
+ * отредактированные карточки больше не являются DeckCard в строгом смысле.
  * result — массив id добавленных заметок (number) или null (не добавлена,
  * обычно точный дубликат по первому полю).
  */
 export async function pushCardsToAnki(
   deckName: string,
-  cards: DeckCard[],
+  cards: Array<{ sentence: string; translation: string }>,
 ): Promise<{ sent: number; skipped: number }> {
   const notes = cards.map((card) => ({
     deckName,

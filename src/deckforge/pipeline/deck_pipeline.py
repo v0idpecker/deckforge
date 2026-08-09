@@ -70,6 +70,8 @@ class DeckPipeline:
             await self.set_done_status(item)
             await self._deckitem_service.update_item(item)
 
+            self._anki.export_deck(str(task_id))
+
         task_status = "PARTIALLY_DONE" if has_errors else "DONE"
         await self._decktask_service.complete_task(task_id, task_status)
 

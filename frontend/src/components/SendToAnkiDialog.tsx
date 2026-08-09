@@ -1,7 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
-  Autocomplete,
   Box,
   Button,
   CircularProgress,
@@ -10,7 +9,6 @@ import {
   DialogContent,
   DialogTitle,
   Stack,
-  TextField,
   Typography,
 } from "@mui/material";
 import {
@@ -22,16 +20,16 @@ import {
   pushCardsToAnki,
 } from "../api/ankiConnect";
 import { getDeckCards } from "../api/decks";
-import type { DeckCard } from "../types/decks";
-
-const CREATE_NEW_OPTION = "＋ Create new deck…";
+import { DestinationStep, CREATE_NEW_OPTION } from "./DestinationStep";
+import { ReviewStep } from "./ReviewStep";
+import type { DeckCard, EditableCard } from "../types/decks";
 
 type DialogState =
   | "loading"
   | "unreachable"
   | "cors_blocked"
   | "anki_error"
-  | "choose_deck"
+  | "ready"
   | "sending"
   | "success"
   | "partial"
@@ -76,10 +74,20 @@ async function classifyFailure(
   return "error";
 }
 
+function toEditableCards(cards: DeckCard[]): EditableCard[] {
+  return cards.map((card) => ({
+    card,
+    selected: true,
+    sentence: card.sentence,
+    translation: card.translation,
+  }));
+}
+
 export function SendToAnkiDialog({ open, taskId, onClose }: Props) {
   const [state, setState] = useState<DialogState>("loading");
+  const [step, setStep] = useState<0 | 1>(0);
   const [decks, setDecks] = useState<string[]>([]);
-  const [cards, setCards] = useState<DeckCard[]>([]);
+  const [editableCards, setEditableCards] = useState<EditableCard[]>([]);
   const [suggestedDeckName, setSuggestedDeckName] = useState("");
   const [selectedDeck, setSelectedDeck] = useState<string | null>(null);
   const [creatingNew, setCreatingNew] = useState(false);
@@ -100,8 +108,9 @@ export function SendToAnkiDialog({ open, taskId, onClose }: Props) {
 
     const run = async () => {
       setState("loading");
+      setStep(0);
       setDecks([]);
-      setCards([]);
+      setEditableCards([]);
       setSuggestedDeckName("");
       setSelectedDeck(null);
       setCreatingNew(false);
@@ -130,7 +139,7 @@ export function SendToAnkiDialog({ open, taskId, onClose }: Props) {
         }
 
         setDecks(deckNames);
-        setCards(cardsResponse.cards);
+        setEditableCards(toEditableCards(cardsResponse.cards));
         setSuggestedDeckName(cardsResponse.suggested_deck_name);
 
         // Единственная неидемпотентная операция держится отдельно от push-флоу:
@@ -145,7 +154,7 @@ export function SendToAnkiDialog({ open, taskId, onClose }: Props) {
           return;
         }
 
-        setState("choose_deck");
+        setState("ready");
       } catch (cause) {
         if (cancelled) {
           return;
@@ -168,6 +177,40 @@ export function SendToAnkiDialog({ open, taskId, onClose }: Props) {
     };
   }, [open, taskId, reloadKey]);
 
+  const cardsToSend = useMemo(
+    () =>
+      editableCards
+        .filter((card) => card.selected && card.sentence.trim().length > 0)
+        .map((card) => ({
+          sentence: card.sentence,
+          translation: card.translation,
+        })),
+    [editableCards],
+  );
+
+  const selectedCount = editableCards.filter((card) => card.selected).length;
+  const hasInvalidSelected = editableCards.some(
+    (card) => card.selected && card.sentence.trim().length === 0,
+  );
+  const canProceed = selectedCount > 0 && !hasInvalidSelected;
+
+  const handleCardChange = (
+    id: string,
+    patch: Partial<
+      Pick<EditableCard, "selected" | "sentence" | "translation">
+    >,
+  ) => {
+    setEditableCards((prev) =>
+      prev.map((card) =>
+        card.card.id === id ? { ...card, ...patch } : card,
+      ),
+    );
+  };
+
+  const handleCardRemove = (id: string) => {
+    setEditableCards((prev) => prev.filter((card) => card.card.id !== id));
+  };
+
   const handleRetry = () => {
     setReloadKey((key) => key + 1);
   };
@@ -175,7 +218,7 @@ export function SendToAnkiDialog({ open, taskId, onClose }: Props) {
   const handleSend = async () => {
     const deckName = creatingNew ? newDeckName.trim() : selectedDeck;
 
-    if (!deckName || cards.length === 0) {
+    if (!deckName || cardsToSend.length === 0) {
       return;
     }
 
@@ -183,7 +226,7 @@ export function SendToAnkiDialog({ open, taskId, onClose }: Props) {
     setErrorMsg(null);
 
     try {
-      const { sent, skipped } = await pushCardsToAnki(deckName, cards);
+      const { sent, skipped } = await pushCardsToAnki(deckName, cardsToSend);
       setResult({ deckName, sent, skipped });
       setState(skipped === 0 ? "success" : "partial");
     } catch (cause) {
@@ -195,9 +238,10 @@ export function SendToAnkiDialog({ open, taskId, onClose }: Props) {
     }
   };
 
-  const canSend = creatingNew
-    ? newDeckName.trim().length > 0
-    : selectedDeck !== null;
+  const canSend =
+    (creatingNew
+      ? newDeckName.trim().length > 0
+      : selectedDeck !== null) && cardsToSend.length > 0;
 
   const handleDeckChange = (value: string | null) => {
     if (value === CREATE_NEW_OPTION) {
@@ -304,29 +348,23 @@ export function SendToAnkiDialog({ open, taskId, onClose }: Props) {
           </Stack>
         );
 
-      case "choose_deck":
-        return (
-          <Stack spacing={2}>
-            <Typography variant="body2" sx={{ color: "text.secondary" }}>
-              {cards.length} cards will be sent to the selected deck.
-            </Typography>
-            <Autocomplete
-              options={[...decks, CREATE_NEW_OPTION]}
-              value={selectedDeck}
-              onChange={(_, value) => handleDeckChange(value)}
-              renderInput={(params) => (
-                <TextField {...params} label="Deck" placeholder="Pick a deck…" />
-              )}
-            />
-            {creatingNew && (
-              <TextField
-                label="New deck name"
-                value={newDeckName}
-                onChange={(event) => setNewDeckName(event.target.value)}
-                fullWidth
-              />
-            )}
-          </Stack>
+      case "ready":
+        return step === 0 ? (
+          <ReviewStep
+            cards={editableCards}
+            onCardChange={handleCardChange}
+            onCardRemove={handleCardRemove}
+          />
+        ) : (
+          <DestinationStep
+            decks={decks}
+            selectedDeck={selectedDeck}
+            creatingNew={creatingNew}
+            newDeckName={newDeckName}
+            cardCount={cardsToSend.length}
+            onDeckChange={handleDeckChange}
+            onNewDeckNameChange={setNewDeckName}
+          />
         );
 
       case "sending":
@@ -334,7 +372,7 @@ export function SendToAnkiDialog({ open, taskId, onClose }: Props) {
           <Stack spacing={2} alignItems="center" sx={{ py: 3 }}>
             <CircularProgress size={28} />
             <Typography variant="body2" sx={{ color: "text.secondary" }}>
-              Sending {cards.length} cards to “
+              Sending {cardsToSend.length} cards to “
               {creatingNew ? newDeckName.trim() : selectedDeck}”…
             </Typography>
           </Stack>
@@ -343,7 +381,7 @@ export function SendToAnkiDialog({ open, taskId, onClose }: Props) {
       case "success":
         return (
           <Alert severity="success">
-            {result?.sent ?? cards.length} cards added to “{result?.deckName}”.
+            {result?.sent ?? cardsToSend.length} cards added to “{result?.deckName}”.
           </Alert>
         );
 
@@ -362,11 +400,26 @@ export function SendToAnkiDialog({ open, taskId, onClose }: Props) {
 
   const renderActions = () => {
     switch (state) {
-      case "choose_deck":
-        return (
+      case "ready":
+        return step === 0 ? (
           <>
             <Button onClick={onClose}>Cancel</Button>
-            <Button variant="contained" onClick={handleSend} disabled={!canSend}>
+            <Button
+              variant="contained"
+              onClick={() => setStep(1)}
+              disabled={!canProceed}
+            >
+              Next
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button onClick={() => setStep(0)}>Back</Button>
+            <Button
+              variant="contained"
+              onClick={handleSend}
+              disabled={!canSend}
+            >
               Send to Anki
             </Button>
           </>
