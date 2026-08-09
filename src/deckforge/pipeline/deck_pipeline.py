@@ -4,7 +4,9 @@ from deckforge.adapters.anki import AnkiAdapter
 from deckforge.adapters.context_generator import ContextGenerator
 from deckforge.adapters.errors import ExternalServiceError
 from deckforge.adapters.normalizer import Normalizer
+from deckforge.dto.deck_card import DeckCardCreateDTO
 from deckforge.dto.deck_item import DeckItemDTO
+from deckforge.services.decks.deckcard import DeckCardService
 from deckforge.services.decks.deckitem import DeckItemSerivce
 from deckforge.services.decks.decktask import DeckTaskService
 from deckforge.services.errors import ServiceError
@@ -15,12 +17,14 @@ class DeckPipeline:
         self,
         decktask_service: DeckTaskService,
         deckitem_service: DeckItemSerivce,
+        deckcard_service: DeckCardService,
         normalizer: Normalizer,
         context_generator: ContextGenerator,
         anki: AnkiAdapter,
     ):
         self._decktask_service = decktask_service
         self._deckitem_service = deckitem_service
+        self._deckcard_service = deckcard_service
         self._normalizer = normalizer
         self._context_generator = context_generator
         self._anki = anki
@@ -47,7 +51,7 @@ class DeckPipeline:
                     await self.normalize_word(item)
                     await self._deckitem_service.update_item(item)
                 if task.options.get("limit"):
-                    await self.get_context_sentence(
+                    cards = await self.get_context_sentence(
                         item,
                         task.options.get("limit", 1),
                         task.options.get("sentence_lang", "english"),
@@ -55,6 +59,7 @@ class DeckPipeline:
                         task.options.get("difficulty", "B1"),
                     )
                     await self._deckitem_service.update_item(item)
+                    await self._deckcard_service.replace_for_item(item.id, cards)
 
             except ExternalServiceError:
                 await self.set_error_status(item)
@@ -103,10 +108,21 @@ class DeckPipeline:
         examples = await self._context_generator.get_context_sentence(
             lookup_word, limit, sentence_lang, translation_lang, difficulty
         )
-        for ex in examples:
-            item.sentence = ex[sentence_lang]
-            item.translation = ex[translation_lang]
+        cards = []
+        for i, ex in enumerate(examples):
+            cards.append(
+                DeckCardCreateDTO(
+                    task_id=item.task_id,
+                    item_id=item.id,
+                    word=lookup_word,
+                    sentence=ex[sentence_lang],
+                    translation=ex[translation_lang],
+                    position=i,
+                )
+            )
 
             self._anki.add_card(ex[sentence_lang], ex[translation_lang])
 
         item.stage = "CONTEXT_GENERATED"
+
+        return cards
