@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio.session import AsyncSession
 from sqlalchemy.sql.expression import select
 
 from deckforge.adapters.errors import ExternalServiceError
-from deckforge.db.models.decks import DeckItem, DeckTask
+from deckforge.db.models.decks import DeckCard, DeckItem, DeckTask
 from deckforge.dto.user import UserDTO
 from deckforge.pipeline.deck_pipeline import DeckPipeline
 from deckforge.services.errors import NotFoundError
@@ -183,7 +183,7 @@ async def test_normalization_fills_in_normalized_word(
 
 @allure.feature("Deck pipeline")
 @allure.story("Context generation")
-async def test_context_generation_fills_in_sentence_and_translation(
+async def test_context_generation_creates_deck_cards(
     pipeline: DeckPipeline,
     db_session: AsyncSession,
     test_user: UserDTO,
@@ -194,7 +194,11 @@ async def test_context_generation_fills_in_sentence_and_translation(
         status="PENDING",
         current_stage="NONE",
         total_items=1,
-        options={"limit": 1, "sentence_lang": "english", "translation_lang": "russian"},
+        options={
+            "limit": 1,
+            "sentence_lang": "english",
+            "translation_lang": "russian",
+        },
         user_id=test_user.id,
     )
 
@@ -217,21 +221,91 @@ async def test_context_generation_fills_in_sentence_and_translation(
     new_item = (
         await db_session.execute(select(DeckItem).where(DeckItem.id == item.id))
     ).scalar_one()
+    new_cards = (
+        (await db_session.execute(select(DeckCard).where(DeckCard.item_id == item.id)))
+        .scalars()
+        .all()
+    )
 
-    assert new_item.sentence == "cat sentence"
-    assert new_item.translation == "cat translation"
+    assert len(new_cards) == 1
+    assert new_cards[0].word == "cat"
+    assert new_cards[0].sentence == "cat sentence"
+    assert new_cards[0].translation == "cat translation"
+    assert new_cards[0].position == 0
+    assert new_cards[0].item_id == item.id
     assert new_item.status == "DONE"
     assert new_task.status == "DONE"
-    assert len(fake_anki.cards) == 1
-    assert fake_anki.exported_decks == [str(new_task.id)]
+    assert fake_anki.cards == [("cat sentence", "cat translation")]
     assert fake_context_generator.calls == [
         {
             "word": "cat",
             "limit": 1,
             "sentence_lang": "english",
             "translation_lang": "russian",
+            "difficulty": "B1",
         }
     ]
+
+
+@allure.feature("Deck pipeline")
+@allure.story("Context generation")
+async def test_deck_cards_count_matches_limit_per_word(
+    pipeline: DeckPipeline,
+    db_session: AsyncSession,
+    test_user: UserDTO,
+    fake_context_generator,
+    fake_anki,
+):
+    limit = 3
+    task = DeckTask(
+        status="PENDING",
+        current_stage="NONE",
+        total_items=2,
+        options={
+            "limit": limit,
+            "sentence_lang": "english",
+            "translation_lang": "russian",
+        },
+        user_id=test_user.id,
+    )
+
+    db_session.add(task)
+    await db_session.flush()
+    items = [
+        DeckItem(status="PENDING", stage="NONE", raw_word="cat", task_id=task.id),
+        DeckItem(status="PENDING", stage="NONE", raw_word="dog", task_id=task.id),
+    ]
+    db_session.add_all(items)
+    await db_session.commit()
+
+    await pipeline.run(task.id)
+
+    db_session.expire_all()
+    await db_session.refresh(task)
+
+    new_task = (
+        await db_session.execute(select(DeckTask).where(DeckTask.id == task.id))
+    ).scalar_one()
+    new_items = (
+        (await db_session.execute(select(DeckItem).where(DeckItem.task_id == task.id)))
+        .scalars()
+        .all()
+    )
+    new_cards = (
+        (await db_session.execute(select(DeckCard).where(DeckCard.task_id == task.id)))
+        .scalars()
+        .all()
+    )
+
+    assert new_task.status == "DONE"
+    assert len(new_cards) == limit * len(new_items)
+    assert len(fake_anki.cards) == limit * len(new_items)
+
+    for item in new_items:
+        item_cards = [card for card in new_cards if card.item_id == item.id]
+        assert len(item_cards) == limit
+        assert sorted(card.position for card in item_cards) == list(range(limit))
+        assert {card.word for card in item_cards} == {item.raw_word}
 
 
 @allure.feature("Deck pipeline")
@@ -277,11 +351,20 @@ async def test_context_generator_uses_normalized_word(
     ).scalar_one()
 
     assert new_item.normalized_word == "dogs"
-    assert new_item.sentence == "dogs sentence"
-    assert new_item.translation == "dogs translation"
     assert new_task.status == "DONE"
     assert fake_normalizer.calls == ["Dogs"]
     assert fake_context_generator.calls[0]["word"] == "dogs"
+    assert fake_context_generator.calls[0]["difficulty"] == "B1"
+
+    new_cards = (
+        (await db_session.execute(select(DeckCard).where(DeckCard.item_id == item.id)))
+        .scalars()
+        .all()
+    )
+    assert len(new_cards) == 1
+    assert new_cards[0].word == "dogs"
+    assert new_cards[0].sentence == "dogs sentence"
+    assert new_cards[0].translation == "dogs translation"
 
 
 @allure.feature("Deck pipeline")
@@ -330,7 +413,7 @@ async def test_several_items_are_being_processed(
         assert new_item.normalized_word in {"cats", "dogs", "books"}
 
     assert len(fake_normalizer.calls) == 3
-    assert len(fake_anki.exported_decks) == 3
+    assert len(fake_anki.cards) == 0
 
 
 @allure.feature("Deck pipeline")
@@ -469,4 +552,4 @@ async def test_only_one_concurrent_pipeline_run_processes_task(
     assert new_item.status == "DONE"
     assert len(fake_normalizer.calls) == 1
     assert len(fake_context_generator.calls) == 1
-    assert len(fake_anki.exported_decks) == 1
+    assert len(fake_anki.cards) == 1

@@ -32,7 +32,7 @@ from deckforge.config import (
     RabbitMQConfig,
     SecurityConfig,
 )
-from deckforge.db.dao.decks import DeckItemDAO, DeckTaskDAO
+from deckforge.db.dao.decks import DeckCardDAO, DeckItemDAO, DeckTaskDAO
 from deckforge.db.dao.outbox import OutboxEventDAO
 from deckforge.db.models import Base
 from deckforge.db.models.user import User
@@ -40,6 +40,7 @@ from deckforge.di.providers import DAOProvider, ServiceProvider
 from deckforge.dto.user import UserDTO
 from deckforge.pipeline.deck_pipeline import DeckPipeline
 from deckforge.scheduler.service import RetryScheduler
+from deckforge.services.decks.deckcard import DeckCardService
 from deckforge.services.decks.deckitem import DeckItemSerivce
 from deckforge.services.decks.decktask import DeckTaskService
 
@@ -295,8 +296,13 @@ class FakeContextGenerator:
         self.calls = []
         self.words_to_fail = set()
 
-    def get_context_sentence(
-        self, word: str | None, limit: int, sentence_lang: str, translation_lang: str
+    async def get_context_sentence(
+        self,
+        word: str | None,
+        limit: int,
+        sentence_lang: str,
+        translation_lang: str,
+        difficulty: str,
     ):
         self.calls.append(
             {
@@ -304,6 +310,7 @@ class FakeContextGenerator:
                 "limit": limit,
                 "sentence_lang": sentence_lang,
                 "translation_lang": translation_lang,
+                "difficulty": difficulty,
             }
         )
 
@@ -315,6 +322,7 @@ class FakeContextGenerator:
                 sentence_lang: f"{word} sentence",
                 translation_lang: f"{word} translation",
             }
+            for _ in range(limit)
         ]
 
 
@@ -343,6 +351,16 @@ async def deckitem_dao():
 @pytest_asyncio.fixture
 async def deckitem_service(deckitem_dao, sessionmaker):
     return DeckItemSerivce(deckitem_dao, sessionmaker)
+
+
+@pytest_asyncio.fixture
+async def deckcard_dao():
+    return DeckCardDAO()
+
+
+@pytest_asyncio.fixture
+async def deckcard_service(deckcard_dao, sessionmaker):
+    return DeckCardService(deckcard_dao, sessionmaker)
 
 
 @pytest_asyncio.fixture
@@ -379,6 +397,7 @@ async def fake_anki():
 async def pipeline(
     decktask_service,
     deckitem_service,
+    deckcard_service,
     fake_normalizer,
     fake_context_generator,
     fake_anki,
@@ -386,6 +405,7 @@ async def pipeline(
     return DeckPipeline(
         decktask_service,
         deckitem_service,
+        deckcard_service,
         fake_normalizer,
         fake_context_generator,
         fake_anki,
@@ -421,6 +441,24 @@ class TestPipelineProvider(Provider):
         return self._pipeline
 
 
+class FakeDeckTaskService(DeckTaskService):
+    def __init__(self):
+        self.retried: list[tuple[UUID, Exception]] = []
+
+    async def mark_for_retry_or_fail(self, task_id: UUID, error: Exception):
+        self.retried.append((task_id, error))
+
+
+class TestTaskServiceProvider(Provider):
+    def __init__(self, service: FakeDeckTaskService):
+        super().__init__()
+        self._service = service
+
+    @provide(scope=Scope.REQUEST)
+    async def get_task_service(self) -> DeckTaskService:
+        return self._service
+
+
 @pytest_asyncio.fixture
 async def rabbit_config():
     return Config(
@@ -437,6 +475,11 @@ async def fake_pipeline():
 
 
 @pytest_asyncio.fixture
+async def fake_task_service():
+    return FakeDeckTaskService()
+
+
+@pytest_asyncio.fixture
 async def broker(rabbit_config):
     return RabbitBroker(rabbit_config.rabbitmq.url)
 
@@ -447,11 +490,14 @@ async def publisher(rabbit_config, broker):
 
 
 @pytest_asyncio.fixture
-async def faststream_app(rabbit_config, fake_pipeline, broker):
+async def faststream_app(rabbit_config, fake_pipeline, fake_task_service, broker):
     router = setup_worker(queue_name=rabbit_config.rabbitmq.queue_name)
     broker.include_router(router)
 
-    container = make_async_container(TestPipelineProvider(fake_pipeline))
+    container = make_async_container(
+        TestPipelineProvider(fake_pipeline),
+        TestTaskServiceProvider(fake_task_service),
+    )
 
     faststream_app = FastStream(broker)
     setup_dishka_faststream(container, faststream_app)
