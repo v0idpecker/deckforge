@@ -1,11 +1,13 @@
 import asyncio
 import uuid
+from pathlib import Path
 
 import allure
 import pytest
 from sqlalchemy.ext.asyncio.session import AsyncSession
 from sqlalchemy.sql.expression import select
 
+from deckforge.adapters.anki import AnkiAdapter
 from deckforge.adapters.errors import ExternalServiceError
 from deckforge.db.models.decks import DeckCard, DeckItem, DeckTask
 from deckforge.dto.user import UserDTO
@@ -24,7 +26,11 @@ async def test_pipeline_turns_pending_task_into_done(
         status="PENDING",
         current_stage="NONE",
         total_items=1,
-        options={},
+        options={
+            "limit": 1,
+            "sentence_lang": "english",
+            "translation_lang": "russian",
+        },
         user_id=test_user.id,
     )
 
@@ -150,7 +156,12 @@ async def test_normalization_fills_in_normalized_word(
         status="PENDING",
         current_stage="NONE",
         total_items=1,
-        options={"normalization": True},
+        options={
+            "normalization": True,
+            "limit": 1,
+            "sentence_lang": "english",
+            "translation_lang": "russian",
+        },
         user_id=test_user.id,
     )
 
@@ -235,7 +246,13 @@ async def test_context_generation_creates_deck_cards(
     assert new_cards[0].item_id == item.id
     assert new_item.status == "DONE"
     assert new_task.status == "DONE"
-    assert fake_anki.cards == [("cat sentence", "cat translation")]
+    assert len(fake_anki.export_calls) == 1
+    task_id, deck_name, exported_cards = fake_anki.export_calls[0]
+    assert task_id == task.id
+    assert deck_name == "DeckForge::english→russian"
+    assert len(exported_cards) == 1
+    assert exported_cards[0].sentence == "cat sentence"
+    assert exported_cards[0].translation == "cat translation"
     assert fake_context_generator.calls == [
         {
             "word": "cat",
@@ -299,7 +316,8 @@ async def test_deck_cards_count_matches_limit_per_word(
 
     assert new_task.status == "DONE"
     assert len(new_cards) == limit * len(new_items)
-    assert len(fake_anki.cards) == limit * len(new_items)
+    assert len(fake_anki.export_calls) == len(new_items)
+    assert len(fake_anki.export_calls[-1][2]) == limit * len(new_items)
 
     for item in new_items:
         item_cards = [card for card in new_cards if card.item_id == item.id]
@@ -382,6 +400,9 @@ async def test_several_items_are_being_processed(
         total_items=3,
         options={
             "normalization": True,
+            "limit": 1,
+            "sentence_lang": "english",
+            "translation_lang": "russian",
         },
         user_id=test_user.id,
     )
@@ -413,7 +434,8 @@ async def test_several_items_are_being_processed(
         assert new_item.normalized_word in {"cats", "dogs", "books"}
 
     assert len(fake_normalizer.calls) == 3
-    assert len(fake_anki.cards) == 0
+    assert len(fake_anki.export_calls) == 3
+    assert len(fake_anki.export_calls[-1][2]) == 3
 
 
 @allure.feature("Deck pipeline")
@@ -467,6 +489,155 @@ async def test_external_service_error_marks_item_error_and_propagates(
     assert task.status == "PROCESSING"
     assert cat.status == "DONE"
     assert broken.status == "ERROR"
+
+
+@allure.feature("Deck pipeline")
+@allure.story("Anki export")
+async def test_processed_task_creates_apkg_file(
+    decktask_service,
+    deckitem_service,
+    deckcard_service,
+    fake_normalizer,
+    fake_context_generator,
+    db_session: AsyncSession,
+    test_user: UserDTO,
+):
+    pipeline = DeckPipeline(
+        decktask_service,
+        deckitem_service,
+        deckcard_service,
+        fake_normalizer,
+        fake_context_generator,
+        AnkiAdapter(),
+    )
+    task = DeckTask(
+        status="PENDING",
+        current_stage="NONE",
+        total_items=1,
+        options={
+            "limit": 1,
+            "sentence_lang": "english",
+            "translation_lang": "russian",
+        },
+        user_id=test_user.id,
+    )
+
+    db_session.add(task)
+    await db_session.flush()
+    item = DeckItem(status="PENDING", stage="NONE", raw_word="cat", task_id=task.id)
+    db_session.add(item)
+    await db_session.commit()
+
+    await pipeline.run(task.id)
+
+    db_session.expire_all()
+    await db_session.refresh(task)
+
+    new_task = (
+        await db_session.execute(select(DeckTask).where(DeckTask.id == task.id))
+    ).scalar_one()
+
+    deck_path = Path("media") / f"{task.id}.apkg"
+    try:
+        assert new_task.status == "DONE"
+        assert deck_path.is_file()
+        assert deck_path.stat().st_size > 0
+    finally:
+        deck_path.unlink(missing_ok=True)
+
+
+@allure.feature("Deck pipeline")
+@allure.story("Anki export")
+async def test_task_without_cards_does_not_export(
+    pipeline: DeckPipeline,
+    db_session: AsyncSession,
+    test_user: UserDTO,
+    fake_anki,
+):
+    task = DeckTask(
+        status="PENDING",
+        current_stage="NONE",
+        total_items=1,
+        options={},
+        user_id=test_user.id,
+    )
+
+    db_session.add(task)
+    await db_session.flush()
+    item = DeckItem(status="PENDING", stage="NONE", raw_word="cat", task_id=task.id)
+    db_session.add(item)
+    await db_session.commit()
+
+    await pipeline.run(task.id)
+
+    db_session.expire_all()
+    await db_session.refresh(task)
+
+    deck_path = Path("media") / f"{task.id}.apkg"
+    try:
+        assert fake_anki.export_calls == []
+        assert not deck_path.exists()
+    finally:
+        deck_path.unlink(missing_ok=True)
+
+
+@allure.feature("Deck pipeline")
+@allure.story("Anki export")
+async def test_partial_export_contains_only_successful_cards(
+    pipeline: DeckPipeline,
+    db_session: AsyncSession,
+    test_user: UserDTO,
+    fake_context_generator,
+    fake_anki,
+):
+    task = DeckTask(
+        status="PENDING",
+        current_stage="NONE",
+        total_items=2,
+        options={
+            "limit": 1,
+            "sentence_lang": "english",
+            "translation_lang": "russian",
+        },
+        user_id=test_user.id,
+    )
+
+    db_session.add(task)
+    await db_session.flush()
+    item = DeckItem(status="PENDING", stage="NONE", raw_word="cat", task_id=task.id)
+    broken_item = DeckItem(
+        status="PENDING", stage="NONE", raw_word="broken", task_id=task.id
+    )
+    db_session.add_all([item, broken_item])
+    await db_session.commit()
+
+    fake_context_generator.words_to_fail.add("broken")
+
+    with pytest.raises(ExternalServiceError):
+        await pipeline.run(task.id)
+
+    db_session.expire_all()
+    await db_session.refresh(task)
+    await db_session.refresh(item)
+    await db_session.refresh(broken_item)
+
+    cat = (
+        await db_session.execute(select(DeckItem).where(DeckItem.id == item.id))
+    ).scalar_one()
+    broken = (
+        await db_session.execute(select(DeckItem).where(DeckItem.id == broken_item.id))
+    ).scalar_one()
+
+    # экспорт произошёл после успешного item-а, до падения второго
+    assert cat.status == "DONE"
+    assert broken.status == "ERROR"
+    assert len(fake_anki.export_calls) == 1
+    task_id, deck_name, exported_cards = fake_anki.export_calls[0]
+    assert task_id == task.id
+    assert deck_name == "DeckForge::english→russian"
+    # карточек столько, сколько успешных слов (сломанное слово не попало)
+    assert len(exported_cards) == 1
+    assert exported_cards[0].word == "cat"
 
 
 @allure.feature("Deck pipeline")
@@ -552,4 +723,5 @@ async def test_only_one_concurrent_pipeline_run_processes_task(
     assert new_item.status == "DONE"
     assert len(fake_normalizer.calls) == 1
     assert len(fake_context_generator.calls) == 1
-    assert len(fake_anki.cards) == 1
+    assert len(fake_anki.export_calls) == 1
+    assert len(fake_anki.export_calls[-1][2]) == 1

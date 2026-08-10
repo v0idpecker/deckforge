@@ -328,14 +328,10 @@ class FakeContextGenerator:
 
 class FakeAnki:
     def __init__(self):
-        self.cards = []
-        self.exported_decks = []
+        self.export_calls = []
 
-    def add_card(self, front, back):
-        self.cards.append((front, back))
-
-    def export_deck(self, deck_name):
-        self.exported_decks.append(deck_name)
+    def export_deck(self, task_id, deck_name, cards):
+        self.export_calls.append((task_id, deck_name, cards))
 
 
 @pytest_asyncio.fixture
