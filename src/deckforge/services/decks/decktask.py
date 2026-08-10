@@ -42,6 +42,10 @@ class DeckTaskService:
         self._decktask_dao = decktask_dao
         self._outbox_event_dao = outbox_event_dao
 
+    @staticmethod
+    def derive_deck_name(options: dict) -> str:
+        return f"DeckForge::{options.get('sentence_lang', 'english')}→{options.get('translation_lang', 'russian')}"
+
     async def create_task(self, dto: DeckTaskCreateDTO, user_id: UUID):
         try:
             async with self._sessionmaker() as session, session.begin():

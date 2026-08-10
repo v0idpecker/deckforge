@@ -132,7 +132,7 @@ async def get_cards(
                 )
             )
 
-        deck_name = f"DeckForge::{task.options.get('sentence_lang', 'english')}→{task.options.get('translation_lang', 'russian')}"
+        deck_name = task_service.derive_deck_name(task.options)
 
         return DeckCardsResponse(
             task_id=task_id,

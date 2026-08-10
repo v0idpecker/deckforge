@@ -70,7 +70,17 @@ class DeckPipeline:
             await self.set_done_status(item)
             await self._deckitem_service.update_item(item)
 
-            self._anki.export_deck(str(task_id))
+            try:
+                cards = await self._deckcard_service.list_by_task(task.id)
+                if cards:
+                    self._anki.export_deck(
+                        task.id,
+                        self._decktask_service.derive_deck_name(task.options),
+                        cards,
+                    )
+            except (ServiceError, OSError) as e:
+                await self._decktask_service.mark_for_retry_or_fail(task.id, e)
+                return
 
         task_status = "PARTIALLY_DONE" if has_errors else "DONE"
         await self._decktask_service.complete_task(task_id, task_status)
@@ -118,8 +128,6 @@ class DeckPipeline:
                     position=i,
                 )
             )
-
-            self._anki.add_card(ex[sentence_lang], ex[translation_lang])
 
         item.stage = "CONTEXT_GENERATED"
 

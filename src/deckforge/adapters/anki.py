@@ -1,30 +1,33 @@
-import random
+from typing import List
+from uuid import UUID
 
 from genanki import Deck, Model, Note, Package
 
+from deckforge.dto.deck_card import DeckCardDTO
+
+DECKFORGE_MODEL = Model(
+    model_id=1356227795,
+    name="DeckForge Basic",
+    fields=[{"name": "Sentence"}, {"name": "Translation"}],
+    templates=[
+        {
+            "name": "Card 1",
+            "qfmt": "{{Sentence}}",
+            "afmt": '{{FrontSide}}<hr id="answer">{{Translation}}',
+        }
+    ],
+)
+
 
 class AnkiAdapter:
-    def __init__(self):
-        self.basic_model = Model(
-            model_id=random.randrange(1 << 30, 1 << 31),
-            name="Basic",
-            fields=[{"name": "Sentence"}, {"name": "Translation"}],
-            templates=[
-                {
-                    "name": "Card 1",
-                    "qfmt": "{{Sentence}}",
-                    "afmt": '{{FrontSide}}<hr id="answer">{{Translation}}',
-                }
-            ],
-        )
-        self.deck = Deck(
-            deck_id=random.randrange(1 << 30, 1 << 31),
-            name=str(random.randrange(1 << 30, 1 << 31)),
-        )
+    def export_deck(
+        self, task_id: UUID, deck_name: str, cards: List[DeckCardDTO]
+    ) -> str:
+        deck = Deck(deck_id=task_id.int % (1 << 31), name=deck_name)
+        for card in cards:
+            note = Note(model=DECKFORGE_MODEL, fields=[card.sentence, card.translation])
+            deck.add_note(note)
+        path = f"media/{task_id}.apkg"
+        Package(deck).write_to_file(path)
 
-    def add_card(self, sentence: str, translation: str):
-        note = Note(model=self.basic_model, fields=[sentence, translation])
-        self.deck.add_note(note)
-
-    def export_deck(self, card_id: str):
-        Package(self.deck).write_to_file(f"media/{card_id}.apkg")
+        return path
