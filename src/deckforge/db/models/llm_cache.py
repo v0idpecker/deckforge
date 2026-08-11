@@ -23,7 +23,7 @@ class LLMCache(Base):
     prompt_version: Mapped[int] = mapped_column(INT, nullable=False)
     result: Mapped[dict] = mapped_column(JSON, nullable=False)
     created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime, nullable=False, default=datetime.datetime.now()
+        DateTime, nullable=False, default=datetime.datetime.now
     )
 
     __table_args__ = (
