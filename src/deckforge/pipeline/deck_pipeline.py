@@ -1,11 +1,11 @@
 from uuid import UUID
 
 from deckforge.adapters.anki import AnkiAdapter
-from deckforge.adapters.context_generator import ContextGenerator
 from deckforge.adapters.errors import ExternalServiceError
 from deckforge.adapters.normalizer import Normalizer
 from deckforge.dto.deck_card import DeckCardCreateDTO
 from deckforge.dto.deck_item import DeckItemDTO
+from deckforge.services.contextgen import ContextGenerationService
 from deckforge.services.decks.deckcard import DeckCardService
 from deckforge.services.decks.deckitem import DeckItemSerivce
 from deckforge.services.decks.decktask import DeckTaskService
@@ -19,7 +19,7 @@ class DeckPipeline:
         deckitem_service: DeckItemSerivce,
         deckcard_service: DeckCardService,
         normalizer: Normalizer,
-        context_generator: ContextGenerator,
+        context_generator: ContextGenerationService,
         anki: AnkiAdapter,
     ):
         self._decktask_service = decktask_service
@@ -70,17 +70,17 @@ class DeckPipeline:
             await self.set_done_status(item)
             await self._deckitem_service.update_item(item)
 
-            try:
-                cards = await self._deckcard_service.list_by_task(task.id)
-                if cards:
-                    self._anki.export_deck(
-                        task.id,
-                        self._decktask_service.derive_deck_name(task.options),
-                        cards,
-                    )
-            except (ServiceError, OSError) as e:
-                await self._decktask_service.mark_for_retry_or_fail(task.id, e)
-                return
+        try:
+            cards = await self._deckcard_service.list_by_task(task.id)
+            if cards:
+                self._anki.export_deck(
+                    task.id,
+                    self._decktask_service.derive_deck_name(task.options),
+                    cards,
+                )
+        except (ServiceError, OSError) as e:
+            await self._decktask_service.mark_for_retry_or_fail(task.id, e)
+            return
 
         task_status = "PARTIALLY_DONE" if has_errors else "DONE"
         await self._decktask_service.complete_task(task_id, task_status)
