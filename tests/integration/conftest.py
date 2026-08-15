@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import (
 
 from deckforge.adapters.amqp.queue_publisher import RabbitPublisher
 from deckforge.adapters.amqp.worker import setup_worker
+from deckforge.adapters.context_generator import ContextGenerator
 from deckforge.adapters.errors import ExternalServiceError
 from deckforge.adapters.security import GoogleOAuthAdapter, JWTAdapter
 from deckforge.api.handlers.auth import get_current_user
@@ -33,6 +34,7 @@ from deckforge.config import (
     SecurityConfig,
 )
 from deckforge.db.dao.decks import DeckCardDAO, DeckItemDAO, DeckTaskDAO
+from deckforge.db.dao.llm_cache import LLMCacheDAO
 from deckforge.db.dao.outbox import OutboxEventDAO
 from deckforge.db.models import Base
 from deckforge.db.models.user import User
@@ -40,9 +42,11 @@ from deckforge.di.providers import DAOProvider, ServiceProvider
 from deckforge.dto.user import UserDTO
 from deckforge.pipeline.deck_pipeline import DeckPipeline
 from deckforge.scheduler.service import RetryScheduler
+from deckforge.services.contextgen import ContextGenerationService
 from deckforge.services.decks.deckcard import DeckCardService
 from deckforge.services.decks.deckitem import DeckItemSerivce
 from deckforge.services.decks.decktask import DeckTaskService
+from deckforge.services.llm_cache import LLMCacheService
 
 # base test fixtures
 
@@ -119,12 +123,13 @@ async def fake_publisher():
 
 
 @pytest_asyncio.fixture
-async def container(sessionmaker, fake_publisher):
+async def container(sessionmaker, fake_publisher, fake_context_generator):
     container = make_async_container(
         TestDBProvider(sessionmaker),
         DAOProvider(),
         ServiceProvider(),
         TestPublisherProvider(fake_publisher),
+        TestContextGenProvider(fake_context_generator),
     )
     yield container
 
@@ -247,13 +252,16 @@ async def auth_provider(test_config, fake_oauth):
 
 
 @pytest_asyncio.fixture
-async def auth_container(sessionmaker, fake_publisher, test_config, fake_oauth):
+async def auth_container(
+    sessionmaker, fake_publisher, test_config, fake_oauth, fake_context_generator
+):
     container = make_async_container(
         TestDBProvider(sessionmaker),
         DAOProvider(),
         ServiceProvider(),
         TestPublisherProvider(fake_publisher),
         TestAuthProvider(test_config, fake_oauth),
+        TestContextGenProvider(fake_context_generator),
     )
     yield container
 
@@ -326,12 +334,45 @@ class FakeContextGenerator:
         ]
 
 
+class FakeLLMGenerator:
+    def __init__(self, model: str = "fake-model"):
+        self.model = model
+        self.calls = 0
+
+    async def get_context_sentence(
+        self,
+        word: str,
+        limit: int,
+        sentence_lang: str,
+        translation_lang: str,
+        difficulty: str,
+    ):
+        self.calls += 1
+        return [
+            {
+                sentence_lang: f"{word} sentence {i}",
+                translation_lang: f"{word} translation {i}",
+            }
+            for i in range(limit)
+        ]
+
+
 class FakeAnki:
     def __init__(self):
         self.export_calls = []
 
     def export_deck(self, task_id, deck_name, cards):
         self.export_calls.append((task_id, deck_name, cards))
+
+
+class TestContextGenProvider(Provider):
+    def __init__(self, generator: ContextGenerator):
+        super().__init__()
+        self._generator = generator
+
+    @provide(scope=Scope.REQUEST)
+    async def get_context_generator(self) -> ContextGenerator:
+        return self._generator
 
 
 @pytest_asyncio.fixture
@@ -387,6 +428,26 @@ async def fake_context_generator():
 @pytest_asyncio.fixture
 async def fake_anki():
     return FakeAnki()
+
+
+@pytest_asyncio.fixture
+async def llm_cache_dao():
+    return LLMCacheDAO()
+
+
+@pytest_asyncio.fixture
+async def llm_cache_service(sessionmaker, llm_cache_dao):
+    return LLMCacheService(sessionmaker, llm_cache_dao)
+
+
+@pytest_asyncio.fixture
+async def fake_llm_generator():
+    return FakeLLMGenerator()
+
+
+@pytest_asyncio.fixture
+async def context_gen_service(sessionmaker, fake_llm_generator, llm_cache_service):
+    return ContextGenerationService(sessionmaker, fake_llm_generator, llm_cache_service)
 
 
 @pytest_asyncio.fixture

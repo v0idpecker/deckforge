@@ -316,7 +316,7 @@ async def test_deck_cards_count_matches_limit_per_word(
 
     assert new_task.status == "DONE"
     assert len(new_cards) == limit * len(new_items)
-    assert len(fake_anki.export_calls) == len(new_items)
+    assert len(fake_anki.export_calls) == 1
     assert len(fake_anki.export_calls[-1][2]) == limit * len(new_items)
 
     for item in new_items:
@@ -434,7 +434,7 @@ async def test_several_items_are_being_processed(
         assert new_item.normalized_word in {"cats", "dogs", "books"}
 
     assert len(fake_normalizer.calls) == 3
-    assert len(fake_anki.export_calls) == 3
+    assert len(fake_anki.export_calls) == 1
     assert len(fake_anki.export_calls[-1][2]) == 3
 
 
@@ -583,7 +583,7 @@ async def test_task_without_cards_does_not_export(
 
 @allure.feature("Deck pipeline")
 @allure.story("Anki export")
-async def test_partial_export_contains_only_successful_cards(
+async def test_failed_item_skips_export(
     pipeline: DeckPipeline,
     db_session: AsyncSession,
     test_user: UserDTO,
@@ -628,16 +628,10 @@ async def test_partial_export_contains_only_successful_cards(
         await db_session.execute(select(DeckItem).where(DeckItem.id == broken_item.id))
     ).scalar_one()
 
-    # экспорт произошёл после успешного item-а, до падения второго
     assert cat.status == "DONE"
     assert broken.status == "ERROR"
-    assert len(fake_anki.export_calls) == 1
-    task_id, deck_name, exported_cards = fake_anki.export_calls[0]
-    assert task_id == task.id
-    assert deck_name == "DeckForge::english→russian"
-    # карточек столько, сколько успешных слов (сломанное слово не попало)
-    assert len(exported_cards) == 1
-    assert exported_cards[0].word == "cat"
+
+    assert fake_anki.export_calls == []
 
 
 @allure.feature("Deck pipeline")
