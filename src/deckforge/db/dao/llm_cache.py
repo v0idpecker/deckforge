@@ -60,12 +60,12 @@ class LLMCacheDAO:
 
     async def get_by_key(
         self, session: AsyncSession, key: LLMCacheKeyDTO
-    ) -> LLMCacheDTO:
+    ) -> LLMCacheDTO | None:
         try:
             res = await session.execute(select(LLMCache).filter_by(**key.__dict__))
             cache = res.scalars().one_or_none()
-            if cache is None:
-                raise DAONotFoundError("Cache not found")
+            if not cache:
+                return None
             return LLMCacheDTO.from_entity(cache)
         except SQLAlchemyError as e:
             raise DAOError(f"Unexpected database error: {e}")

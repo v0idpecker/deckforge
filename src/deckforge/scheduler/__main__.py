@@ -4,7 +4,12 @@ from dishka import AsyncContainer, make_async_container
 from dotenv import load_dotenv
 
 from deckforge.config import Config, create_config
-from deckforge.di.providers import DAOProvider, DBProvider, ServiceProvider
+from deckforge.di.providers import (
+    DAOProvider,
+    DBProvider,
+    ServiceProvider,
+    WordProcessingProvider,
+)
 from deckforge.scheduler.service import RetryScheduler, SchedulerProvider
 
 load_dotenv()
@@ -28,6 +33,7 @@ async def main():
         DAOProvider(),
         ServiceProvider(),
         SchedulerProvider(),
+        WordProcessingProvider(),
         context={Config: config},
     )
 

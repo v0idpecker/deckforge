@@ -26,6 +26,8 @@ SYSTEM_PROMPT = """Ты — генератор учебных примеров �
 {{"word": "...", "sentences": [{{"sentence": "...", "translation": "..."}}]}}
 """
 
+PROMPT_VERSION = 1
+
 
 def build_system_prompt(source_lang: str, target_lang: str, difficulty: str):
     return SYSTEM_PROMPT.format(
@@ -50,7 +52,7 @@ class TranslationResponse(BaseModel):
 class ContextGenerator:
     def __init__(self, client: AsyncOpenAI, model: str):
         self._client = client
-        self._model = model
+        self.model = model
 
     async def get_context_sentence(
         self,
@@ -90,7 +92,7 @@ class ContextGenerator:
         for attempt in range(2):
             try:
                 response = await self._client.chat.completions.parse(
-                    model=self._model,
+                    model=self.model,
                     messages=messages,
                     response_format=TranslationResponse,
                 )

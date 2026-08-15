@@ -14,7 +14,7 @@ class LLMCacheDTO:
     limit: int
     model: str
     prompt_version: int
-    result: dict
+    result: list[dict]
 
     @classmethod
     def from_entity(cls, entity: LLMCache):
@@ -40,7 +40,7 @@ class LLMCacheCreateDTO:
     limit: int
     model: str
     prompt_version: int
-    result: dict
+    result: list[dict]
 
 
 @dataclass

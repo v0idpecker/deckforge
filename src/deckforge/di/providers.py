@@ -13,13 +13,16 @@ from deckforge.adapters.normalizer import Normalizer
 from deckforge.adapters.security import GoogleOAuthAdapter, JWTAdapter
 from deckforge.config import Config
 from deckforge.db.dao.decks import DeckCardDAO, DeckItemDAO, DeckTaskDAO
+from deckforge.db.dao.llm_cache import LLMCacheDAO
 from deckforge.db.dao.outbox import OutboxEventDAO
 from deckforge.db.dao.user import UserDAO
 from deckforge.db.sessionmaker import new_sessionmaker
 from deckforge.pipeline.deck_pipeline import DeckPipeline
+from deckforge.services.contextgen import ContextGenerationService
 from deckforge.services.decks.deckcard import DeckCardService
 from deckforge.services.decks.deckitem import DeckItemSerivce
 from deckforge.services.decks.decktask import DeckTaskService
+from deckforge.services.llm_cache import LLMCacheService
 from deckforge.services.user import UserService
 
 
@@ -46,6 +49,7 @@ class DAOProvider(Provider):
     deckcard_dao = provide(DeckCardDAO, scope=Scope.REQUEST)
     user_dao = provide(UserDAO, scope=Scope.REQUEST)
     outbox_event_dao = provide(OutboxEventDAO, scope=Scope.REQUEST)
+    llm_cache_dao = provide(LLMCacheDAO, scope=Scope.REQUEST)
 
 
 class AMQPProvider(Provider):
@@ -90,6 +94,21 @@ class ServiceProvider(Provider):
     ) -> DeckCardService:
         return DeckCardService(deckcard_dao, sessionmaker)
 
+    @provide(scope=Scope.REQUEST)
+    async def get_cache_service(
+        self, sessionmaker: async_sessionmaker[AsyncSession], cache_dao: LLMCacheDAO
+    ) -> LLMCacheService:
+        return LLMCacheService(sessionmaker, cache_dao)
+
+    @provide(scope=Scope.REQUEST)
+    async def get_contextgen_service(
+        self,
+        sessionmaker: async_sessionmaker[AsyncSession],
+        generator: ContextGenerator,
+        cache_service: LLMCacheService,
+    ) -> ContextGenerationService:
+        return ContextGenerationService(sessionmaker, generator, cache_service)
+
 
 class PipelineProvider(Provider):
     config = from_context(provides=Config, scope=Scope.APP)
@@ -101,7 +120,7 @@ class PipelineProvider(Provider):
         deckitem_service: DeckItemSerivce,
         deckcard_service: DeckCardService,
         normalizer: Normalizer,
-        context_generator: ContextGenerator,
+        context_generator: ContextGenerationService,
         anki: AnkiAdapter,
     ) -> DeckPipeline:
         return DeckPipeline(

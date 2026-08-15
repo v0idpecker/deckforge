@@ -21,7 +21,7 @@ class LLMCache(Base):
     limit: Mapped[int] = mapped_column(INT, nullable=False)
     model: Mapped[str] = mapped_column(TEXT, nullable=False)
     prompt_version: Mapped[int] = mapped_column(INT, nullable=False)
-    result: Mapped[dict] = mapped_column(JSON, nullable=False)
+    result: Mapped[list[dict]] = mapped_column(JSON, nullable=False)
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime, nullable=False, default=datetime.datetime.now
     )
