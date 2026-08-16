@@ -1,3 +1,4 @@
+import asyncio
 from uuid import UUID
 
 from deckforge.adapters.anki import AnkiAdapter
@@ -21,6 +22,7 @@ class DeckPipeline:
         normalizer: Normalizer,
         context_generator: ContextGenerationService,
         anki: AnkiAdapter,
+        concurrency: int,
     ):
         self._decktask_service = decktask_service
         self._deckitem_service = deckitem_service
@@ -28,6 +30,7 @@ class DeckPipeline:
         self._normalizer = normalizer
         self._context_generator = context_generator
         self._anki = anki
+        self._concurrency = concurrency
 
     async def run(self, task_id: UUID):
         task = await self._decktask_service.get_task(task_id)
@@ -42,33 +45,42 @@ class DeckPipeline:
             raise ServiceError(f"No pending deck items found for task {task_id}")
 
         has_errors = False
-        for item in items:
-            await self.set_in_progress_status(item)
-            await self._deckitem_service.update_item(item)
 
-            try:
-                if task.options.get("normalization"):
-                    await self.normalize_word(item)
-                    await self._deckitem_service.update_item(item)
-                if task.options.get("limit"):
-                    cards = await self.get_context_sentence(
-                        item,
-                        task.options.get("limit", 1),
-                        task.options.get("sentence_lang", "english"),
-                        task.options.get("translation_lang", "russian"),
-                        task.options.get("difficulty", "B1"),
-                    )
-                    await self._deckcard_service.replace_for_item(item.id, cards)
-                    await self._deckitem_service.update_item(item)
+        semaphore = asyncio.Semaphore(self._concurrency)
 
-            except ExternalServiceError:
-                await self.set_error_status(item)
+        async def process_item(item):
+            async with semaphore:
+                await self.set_in_progress_status(item)
                 await self._deckitem_service.update_item(item)
-                has_errors = True
-                raise
 
-            await self.set_done_status(item)
-            await self._deckitem_service.update_item(item)
+                try:
+                    if task.options.get("normalization"):
+                        await self.normalize_word(item)
+                        await self._deckitem_service.update_item(item)
+                    if task.options.get("limit"):
+                        cards = await self.get_context_sentence(
+                            item,
+                            task.options.get("limit", 1),
+                            task.options.get("sentence_lang", "english"),
+                            task.options.get("translation_lang", "russian"),
+                            task.options.get("difficulty", "B1"),
+                        )
+                        await self._deckcard_service.replace_for_item(item.id, cards)
+                        await self._deckitem_service.update_item(item)
+
+                    await self.set_done_status(item)
+                    await self._deckitem_service.update_item(item)
+                    return None
+
+                except ExternalServiceError as err:
+                    await self.set_error_status(item)
+                    await self._deckitem_service.update_item(item)
+                    return err
+
+        results = await asyncio.gather(
+            *(process_item(item) for item in items), return_exceptions=True
+        )
+        has_errors = any(r is not None for r in results)
 
         try:
             cards = await self._deckcard_service.list_by_task(task.id)

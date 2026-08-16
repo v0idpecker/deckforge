@@ -122,6 +122,7 @@ class PipelineProvider(Provider):
         normalizer: Normalizer,
         context_generator: ContextGenerationService,
         anki: AnkiAdapter,
+        config: Config,
     ) -> DeckPipeline:
         return DeckPipeline(
             decktask_service,
@@ -130,6 +131,7 @@ class PipelineProvider(Provider):
             normalizer,
             context_generator,
             anki,
+            config.asyncio.concurrency,
         )
 
 

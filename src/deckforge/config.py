@@ -8,8 +8,15 @@ def _csv_env(name: str, default: str) -> list[str]:
     return [item.strip() for item in value.split(",") if item.strip()]
 
 
+class AsyncioConfig(BaseModel):
+    concurrency: int = 5
+
+
 class PostgresConfig(BaseModel):
     url: str = Field(default_factory=lambda: str(os.getenv("POSTGRES_URL")))
+    pool_size: int = 10
+    max_overflow: int = 20
+    pool_recycle: int = 3600
 
 
 class RabbitMQConfig(BaseModel):
@@ -60,6 +67,7 @@ class Config(BaseModel):
     llm: LLMConfig = Field(default_factory=LLMConfig)
     security: SecurityConfig = Field(default_factory=SecurityConfig)
     app: AppConfig = Field(default_factory=AppConfig)
+    asyncio: AsyncioConfig = Field(default_factory=AsyncioConfig)
 
 
 def create_config():

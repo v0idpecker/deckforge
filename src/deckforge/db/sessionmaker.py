@@ -7,7 +7,12 @@ from deckforge.config import PostgresConfig
 async def new_sessionmaker(
     psql_config: PostgresConfig,
 ) -> async_sessionmaker[AsyncSession]:
-    engine = create_async_engine(url=psql_config.url)
+    engine = create_async_engine(
+        url=psql_config.url,
+        pool_size=psql_config.pool_size,
+        max_overflow=psql_config.max_overflow,
+        pool_recycle=psql_config.pool_recycle,
+    )
     return async_sessionmaker(
         bind=engine, class_=AsyncSession, expire_on_commit=False, autoflush=False
     )
