@@ -78,3 +78,7 @@ results/
 .venv
 docker/
 alembic/versions
+.aider*
+
+CONVENTIONS.md
+.env.aider

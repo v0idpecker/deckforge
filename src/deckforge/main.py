@@ -1,3 +1,4 @@
+import logging
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -15,6 +16,7 @@ from deckforge.adapters.amqp.worker import setup_worker
 from deckforge.api.handlers import router
 from deckforge.config import create_config
 from deckforge.di.setup_container import setup_container
+from deckforge.logging_setup import setup_logging
 
 load_dotenv()
 
@@ -24,8 +26,11 @@ if not media_dir_path.is_dir():
     os.mkdir("media")
 
 config = create_config()
+setup_logging(config.logging.level, config.logging.format)
 
-print(config.app.backend_public_url)
+logger = logging.getLogger(__name__)
+
+logger.info("Backend public URL: %s", config.app.backend_public_url)
 
 broker = new_broker(config.rabbitmq)
 amqp_router = setup_worker(config.rabbitmq.queue_name)

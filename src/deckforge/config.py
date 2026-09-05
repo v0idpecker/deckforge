@@ -61,6 +61,11 @@ class AppConfig(BaseModel):
     )
 
 
+class LoggingConfig(BaseModel):
+    level: str = Field(default_factory=lambda: os.getenv("LOG_LEVEL", "INFO"))
+    format: str = Field(default_factory=lambda: os.getenv("LOG_FORMAT", "text"))
+
+
 class Config(BaseModel):
     postgres: PostgresConfig = Field(default_factory=PostgresConfig)
     rabbitmq: RabbitMQConfig = Field(default_factory=RabbitMQConfig)
@@ -68,6 +73,7 @@ class Config(BaseModel):
     security: SecurityConfig = Field(default_factory=SecurityConfig)
     app: AppConfig = Field(default_factory=AppConfig)
     asyncio: AsyncioConfig = Field(default_factory=AsyncioConfig)
+    logging: LoggingConfig = Field(default_factory=LoggingConfig)
 
 
 def create_config():
