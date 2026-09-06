@@ -17,6 +17,7 @@ from deckforge.api.handlers import router
 from deckforge.config import create_config
 from deckforge.di.setup_container import setup_container
 from deckforge.logging_setup import setup_logging
+from deckforge.middleware.request_id import RequestIdMiddleware
 
 load_dotenv()
 
@@ -39,13 +40,11 @@ container = setup_container(config=config, broker=broker)
 setup_dishka_faststream(container, faststream_app, auto_inject=True)
 broker.include_router(amqp_router)
 
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await faststream_app.start()
     yield
     await faststream_app.stop()
-
 
 def get_fastapi_app() -> FastAPI:
     app = FastAPI(title="Deck Forge", lifespan=lifespan)
@@ -63,9 +62,11 @@ def get_fastapi_app() -> FastAPI:
         same_site="lax",
         https_only=False,
     )
+    # Последний добавленный middleware срабатывает первым:
+    # request_id должен быть установлен до всех остальных слоёв.
+    app.add_middleware(RequestIdMiddleware)
 
     setup_dishka_fastapi(app=app, container=container)
     return app
-
 
 app = get_fastapi_app()

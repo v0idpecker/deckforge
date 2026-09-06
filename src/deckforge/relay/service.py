@@ -1,10 +1,12 @@
 import asyncio
+import logging
 
 from sqlalchemy.ext.asyncio.session import AsyncSession, async_sessionmaker
 
 from deckforge.adapters.amqp.queue_publisher import QueuePublisher
 from deckforge.db.dao.outbox import OutboxEventDAO
 
+logger = logging.getLogger(__name__)
 
 class OutboxRelay:
     def __init__(
@@ -27,6 +29,7 @@ class OutboxRelay:
                 if processed_count == 0:
                     await asyncio.sleep(interval)
             except Exception:
+                logger.exception("Outbox relay iteration failed")
                 await asyncio.sleep(interval)
 
     async def process_batch(self):
@@ -45,4 +48,5 @@ class OutboxRelay:
             for msg in messages:
                 await self._outbox_event_dao.mark_sent(msg.id, session)
 
+        logger.info("Published %d outbox events", len(messages))
         return len(messages)
