@@ -1,9 +1,11 @@
 import asyncio
 import uuid
+from types import SimpleNamespace
 from typing import AsyncIterable
 from uuid import UUID
 
 import httpx
+import pytest
 import pytest_asyncio
 from dishka import Provider, Scope, make_async_container, provide
 from dishka.integrations.fastapi import setup_dishka
@@ -303,6 +305,8 @@ class FakeContextGenerator:
     def __init__(self) -> None:
         self.calls = []
         self.words_to_fail = set()
+        # слово -> исключение, которое нужно бросить (ServiceError, RuntimeError и т.п.)
+        self.words_to_fail_with: dict[str, Exception] = {}
 
     async def get_context_sentence(
         self,
@@ -322,6 +326,8 @@ class FakeContextGenerator:
             }
         )
 
+        if word in self.words_to_fail_with:
+            raise self.words_to_fail_with[word]
         if word in self.words_to_fail:
             raise ExternalServiceError("context service failed")
 
@@ -363,6 +369,25 @@ class FakeAnki:
 
     def export_deck(self, task_id, deck_name, cards):
         self.export_calls.append((task_id, deck_name, cards))
+
+
+# фейк OpenAI-клиента: последовательность ответов на chat.completions.parse
+
+
+class FakeLLMCompletions:
+    def __init__(self, responses: list):
+        self._responses = responses
+        self.calls = 0
+
+    async def parse(self, **kwargs):
+        response = self._responses[min(self.calls, len(self._responses) - 1)]
+        self.calls += 1
+        return response
+
+
+class FakeOpenAIClient:
+    def __init__(self, responses: list):
+        self.chat = SimpleNamespace(completions=FakeLLMCompletions(responses))
 
 
 class TestContextGenProvider(Provider):
@@ -430,6 +455,23 @@ async def fake_anki():
     return FakeAnki()
 
 
+@pytest.fixture
+def make_openai_client():
+    def _factory(responses: list) -> FakeOpenAIClient:
+        return FakeOpenAIClient(responses)
+
+    return _factory
+
+
+@pytest.fixture
+def make_llm_response():
+    def _factory(parsed=None, content=None, refusal=None):
+        message = SimpleNamespace(parsed=parsed, content=content, refusal=refusal)
+        return SimpleNamespace(choices=[SimpleNamespace(message=message)])
+
+    return _factory
+
+
 @pytest_asyncio.fixture
 async def llm_cache_dao():
     return LLMCacheDAO()
@@ -466,7 +508,32 @@ async def pipeline(
         fake_normalizer,
         fake_context_generator,
         fake_anki,
+        concurrency=4,
     )
+
+
+@pytest.fixture
+def make_llm_pipeline(
+    decktask_service,
+    deckitem_service,
+    deckcard_service,
+    fake_normalizer,
+    fake_anki,
+    make_openai_client,
+):
+    def _factory(responses: list) -> DeckPipeline:
+        generator = ContextGenerator(make_openai_client(responses), model="fake-model")
+        return DeckPipeline(
+            decktask_service,
+            deckitem_service,
+            deckcard_service,
+            fake_normalizer,
+            generator,
+            fake_anki,
+            concurrency=4,
+        )
+
+    return _factory
 
 
 # worker fixtures
