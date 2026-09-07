@@ -249,6 +249,7 @@ class DeckItemDAO:
                     normalized_word=data.normalized_word,
                     sentence=data.sentence,
                     translation=data.translation,
+                    error=data.error,
                 )
             )
             await session.execute(stmt)
