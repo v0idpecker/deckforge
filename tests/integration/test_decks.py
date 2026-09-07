@@ -7,7 +7,7 @@ from httpx import AsyncClient, HTTPError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from deckforge.db.models.decks import DeckItem, DeckTask
+from deckforge.db.models.decks import DeckCard, DeckItem, DeckTask
 from deckforge.db.models.outbox import EventStatus, OutboxEvent
 from deckforge.db.models.user import User
 from deckforge.dto.user import UserDTO
@@ -373,3 +373,152 @@ async def test_create_empty_deck_task(client: AsyncClient, db_session: AsyncSess
     task = res.scalar_one()
 
     assert task.total_items == 0
+
+
+@allure.feature("Decks API")
+@allure.story("Get deck cards")
+async def test_get_cards_for_task_without_cards_returns_empty_list(
+    client: AsyncClient, db_session: AsyncSession, test_user: UserDTO
+):
+    task = DeckTask(
+        status="PARTIALLY_DONE",
+        current_stage="NONE",
+        total_items=1,
+        completed_items=0,
+        failed_items=1,
+        options={},
+        user_id=test_user.id,
+    )
+    db_session.add(task)
+    await db_session.commit()
+
+    response = await client.get(url=f"/api/decks/{task.id}/cards")
+
+    assert response.status_code == 200
+
+    data = response.json()
+    assert data["task_id"] == str(task.id)
+    assert data["cards"] == []
+
+
+@allure.feature("Deck pipeline")
+@allure.story("Complete without cards after item failures")
+async def test_pipeline_all_items_failed_completes_partially_done_without_retry(
+    pipeline,
+    fake_anki,
+    db_session: AsyncSession,
+    test_user: UserDTO,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    task = DeckTask(
+        status="PENDING",
+        current_stage="NONE",
+        total_items=2,
+        completed_items=0,
+        failed_items=0,
+        options={"normalization": False, "limit": 1},
+        user_id=test_user.id,
+    )
+    db_session.add(task)
+    await db_session.flush()
+
+    item_1 = DeckItem(task_id=task.id, raw_word="cat", status="PENDING", stage="NONE")
+    item_2 = DeckItem(task_id=task.id, raw_word="dog", status="PENDING", stage="NONE")
+    db_session.add_all([item_1, item_2])
+    await db_session.commit()
+
+    async def failing_context(item, *args, **kwargs):
+        raise RuntimeError(f"no context for {item.raw_word}")
+
+    monkeypatch.setattr(pipeline, "get_context_sentence", failing_context)
+
+    await pipeline.run(task.id)
+
+    await db_session.expire_all()
+    res_task = await db_session.execute(
+        select(DeckTask).where(DeckTask.id == task.id)
+    )
+    updated_task = res_task.scalar_one()
+
+    assert updated_task.status == "PARTIALLY_DONE"
+    assert updated_task.attempt_count == 0
+    assert updated_task.next_retry_at is None
+    assert fake_anki.export_calls == []
+
+    res_items = await db_session.execute(
+        select(DeckItem).where(DeckItem.task_id == task.id)
+    )
+    items = res_items.scalars().all()
+    assert len(items) == 2
+    for item in items:
+        assert item.status == "ERROR"
+        assert item.error
+
+
+@allure.feature("Deck pipeline")
+@allure.story("Export cards with partial item failures")
+async def test_pipeline_partial_failure_with_cards_exports_and_completes(
+    pipeline,
+    fake_anki,
+    db_session: AsyncSession,
+    test_user: UserDTO,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    task = DeckTask(
+        status="PENDING",
+        current_stage="NONE",
+        total_items=2,
+        completed_items=0,
+        failed_items=0,
+        options={"normalization": False, "limit": 1},
+        user_id=test_user.id,
+    )
+    db_session.add(task)
+    await db_session.flush()
+
+    item_cat = DeckItem(
+        task_id=task.id, raw_word="cat", status="PENDING", stage="NONE"
+    )
+    item_dog = DeckItem(
+        task_id=task.id, raw_word="dog", status="PENDING", stage="NONE"
+    )
+    db_session.add_all([item_cat, item_dog])
+    await db_session.commit()
+
+    original_get_context = pipeline.get_context_sentence
+
+    async def maybe_failing_context(item, *args, **kwargs):
+        if item.raw_word == "dog":
+            raise RuntimeError("no context for dog")
+        return await original_get_context(item, *args, **kwargs)
+
+    monkeypatch.setattr(pipeline, "get_context_sentence", maybe_failing_context)
+
+    await pipeline.run(task.id)
+
+    await db_session.expire_all()
+    res_task = await db_session.execute(
+        select(DeckTask).where(DeckTask.id == task.id)
+    )
+    updated_task = res_task.scalar_one()
+
+    assert updated_task.status == "PARTIALLY_DONE"
+
+    assert len(fake_anki.export_calls) == 1
+    exported_task_id, _, exported_cards = fake_anki.export_calls[0]
+    assert exported_task_id == task.id
+    assert [card.word for card in exported_cards] == ["cat"]
+
+    res_items = await db_session.execute(
+        select(DeckItem).where(DeckItem.task_id == task.id)
+    )
+    items_by_word = {item.raw_word: item for item in res_items.scalars().all()}
+    assert items_by_word["cat"].status == "DONE"
+    assert items_by_word["dog"].status == "ERROR"
+    assert items_by_word["dog"].error
+
+    res_cards = await db_session.execute(
+        select(DeckCard).where(DeckCard.task_id == task.id)
+    )
+    cards = res_cards.scalars().all()
+    assert {card.word for card in cards} == {"cat"}
