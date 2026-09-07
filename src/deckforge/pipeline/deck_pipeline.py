@@ -35,6 +35,7 @@ class DeckPipeline:
         self._concurrency = concurrency
 
     async def run(self, task_id: UUID):
+        logger.info("Task %s: run started", task_id)
         task = await self._decktask_service.get_task(task_id)
         if task.status in {"DONE", "PARTIALLY_DONE"}:
             logger.info("Task %s skipped, already in final status %s", task_id, task.status)
