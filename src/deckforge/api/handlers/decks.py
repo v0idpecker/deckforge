@@ -115,29 +115,28 @@ async def get_cards(
 ):
     try:
         task = await task_service.get_task(task_id)
-        if task.user_id != current_user.id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden"
-            )
-
-        cards = await card_service.list_by_task(task_id)
-        cards_for_response = []
-        for card in cards:
-            cards_for_response.append(
-                DeckCardResponse(
-                    id=card.id,
-                    word=card.word,
-                    sentence=card.sentence,
-                    translation=card.translation,
-                )
-            )
-
-        deck_name = task_service.derive_deck_name(task.options)
-
-        return DeckCardsResponse(
-            task_id=task_id,
-            suggested_deck_name=deck_name,
-            cards=cards_for_response,
-        )
     except NotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+    if task.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+
+    cards = await card_service.list_by_task(task_id)
+    cards_for_response = []
+    for card in cards:
+        cards_for_response.append(
+            DeckCardResponse(
+                id=card.id,
+                word=card.word,
+                sentence=card.sentence,
+                translation=card.translation,
+            )
+        )
+
+    deck_name = task_service.derive_deck_name(task.options)
+
+    return DeckCardsResponse(
+        task_id=task_id,
+        suggested_deck_name=deck_name,
+        cards=cards_for_response,
+    )

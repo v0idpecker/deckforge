@@ -434,7 +434,7 @@ async def test_pipeline_all_items_failed_completes_partially_done_without_retry(
 
     await pipeline.run(task.id)
 
-    await db_session.expire_all()
+    db_session.expire_all()
     res_task = await db_session.execute(
         select(DeckTask).where(DeckTask.id == task.id)
     )
@@ -496,7 +496,7 @@ async def test_pipeline_partial_failure_with_cards_exports_and_completes(
 
     await pipeline.run(task.id)
 
-    await db_session.expire_all()
+    db_session.expire_all()
     res_task = await db_session.execute(
         select(DeckTask).where(DeckTask.id == task.id)
     )

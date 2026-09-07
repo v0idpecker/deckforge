@@ -299,9 +299,6 @@ class DeckCardDAO:
             res = await session.execute(stmt)
             cards = res.scalars().all()
 
-            if cards == []:
-                raise DAONotFoundError("No cards found")
-
             return [DeckCardDTO.from_entity(card) for card in cards]
         except SQLAlchemyError as e:
             raise DAOError(f"Unexpected database error: {e}")

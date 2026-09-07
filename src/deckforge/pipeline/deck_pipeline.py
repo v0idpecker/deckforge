@@ -109,12 +109,41 @@ class DeckPipeline:
 
         try:
             cards = await self._deckcard_service.list_by_task(task.id)
-            if cards:
-                self._anki.export_deck(
-                    task.id,
-                    self._decktask_service.derive_deck_name(task.options),
-                    cards,
+        except ServiceError as e:
+            logger.error(
+                "Task %s: failed to fetch cards, marking for retry: %s",
+                task_id,
+                str(e),
+            )
+            await self._decktask_service.mark_for_retry_or_fail(task.id, e)
+            return
+
+        if not cards:
+            if has_errors:
+                # Все/часть items упали и карточек нет — терминальный исход,
+                # retry-цикл бессмысленен (нечего экспортировать).
+                logger.warning(
+                    "Task %s: no cards generated due to item errors, "
+                    "completing as PARTIALLY_DONE",
+                    task_id,
                 )
+                await self._decktask_service.complete_task(task_id, "PARTIALLY_DONE")
+            else:
+                # Аномалия: ошибок нет, но карточки не сгенерированы.
+                err = ServiceError(
+                    f"Task {task_id}: no cards were generated "
+                    f"despite successful item processing"
+                )
+                logger.error("Task %s: %s", task_id, err)
+                await self._decktask_service.mark_for_retry_or_fail(task.id, err)
+            return
+
+        try:
+            self._anki.export_deck(
+                task.id,
+                self._decktask_service.derive_deck_name(task.options),
+                cards,
+            )
         except (ServiceError, OSError) as e:
             logger.error(
                 "Task %s: export failed, marking for retry: %s", task_id, str(e)

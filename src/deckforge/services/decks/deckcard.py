@@ -4,9 +4,9 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from deckforge.db.dao.decks import DeckCardDAO
-from deckforge.db.errors import DAOError, DAONotFoundError
+from deckforge.db.errors import DAOError
 from deckforge.dto.deck_card import DeckCardCreateDTO, DeckCardDTO
-from deckforge.services.errors import NotFoundError, ServiceError
+from deckforge.services.errors import ServiceError
 
 
 class DeckCardService:
@@ -27,7 +27,5 @@ class DeckCardService:
         try:
             async with self._sessionmaker() as session, session.begin():
                 return await self._deckcard_dao.list_by_task(session, task_id)
-        except DAONotFoundError as e:
-            raise NotFoundError(str(e))
         except DAOError as e:
             raise ServiceError(str(e))
