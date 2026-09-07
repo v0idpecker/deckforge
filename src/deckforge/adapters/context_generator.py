@@ -138,7 +138,10 @@ class ContextGenerator:
                     )
                 )
                 continue
-        raise ExternalServiceError
+        raise ExternalServiceError(
+            f"LLM failed to return a valid response for word '{word}' "
+            f"(limit={limit}, difficulty={difficulty}) after 2 attempts"
+        )
 
     async def validate_response(self, parsed, limit: int):
         if not isinstance(parsed, TranslationResponse):

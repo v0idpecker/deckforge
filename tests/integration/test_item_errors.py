@@ -31,7 +31,8 @@ async def test_service_error_in_item_marks_item_error_and_task_partially_done(
 
     await pipeline.run(task_id)
 
-    await db_session.expire_all()
+    # expire_all() у AsyncSession — синхронный метод, await не нужен
+    db_session.expire_all()
     res = await db_session.execute(select(DeckItem).where(DeckItem.task_id == task_id))
     items = res.scalars().all()
     items_by_word = {item.raw_word: item for item in items}
@@ -65,7 +66,8 @@ async def test_arbitrary_exception_in_item_marks_item_error_and_task_partially_d
     # произвольное исключение не должно ронять pipeline
     await pipeline.run(task_id)
 
-    await db_session.expire_all()
+    # expire_all() у AsyncSession — синхронный метод, await не нужен
+    db_session.expire_all()
     res = await db_session.execute(select(DeckItem).where(DeckItem.task_id == task_id))
     items = res.scalars().all()
     items_by_word = {item.raw_word: item for item in items}
@@ -106,7 +108,8 @@ async def test_invalid_llm_response_twice_fills_item_error(
 
     assert str(exc_info.value)
 
-    await db_session.expire_all()
+    # expire_all() у AsyncSession — синхронный метод, await не нужен
+    db_session.expire_all()
     res = await db_session.execute(select(DeckItem).where(DeckItem.task_id == task_id))
     item = res.scalar_one()
 
