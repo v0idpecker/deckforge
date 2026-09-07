@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from uuid import UUID
 
 from deckforge.adapters.anki import AnkiAdapter
@@ -12,6 +13,7 @@ from deckforge.services.decks.deckitem import DeckItemSerivce
 from deckforge.services.decks.decktask import DeckTaskService
 from deckforge.services.errors import ServiceError
 
+logger = logging.getLogger(__name__)
 
 class DeckPipeline:
     def __init__(
@@ -35,16 +37,20 @@ class DeckPipeline:
     async def run(self, task_id: UUID):
         task = await self._decktask_service.get_task(task_id)
         if task.status in {"DONE", "PARTIALLY_DONE"}:
+            logger.info("Task %s skipped, already in final status %s", task_id, task.status)
             return
 
         claimed = await self._decktask_service.claim_for_processing(task.id)
         if not claimed:
+            logger.info("Task %s not claimed, skipping run", task_id)
             return
+        logger.info("Task %s claimed for processing", task_id)
         items = await self._deckitem_service.get_task_items(task_id)
         if not items:
+            logger.error("No pending deck items found for task %s", task_id)
             raise ServiceError(f"No pending deck items found for task {task_id}")
 
-        has_errors = False
+        logger.info("Task %s: processing %d items", task_id, len(items))
 
         semaphore = asyncio.Semaphore(self._concurrency)
 
@@ -72,15 +78,33 @@ class DeckPipeline:
                     await self._deckitem_service.update_item(item)
                     return None
 
-                except ExternalServiceError as err:
-                    await self.set_error_status(item)
-                    await self._deckitem_service.update_item(item)
+                except Exception as err:
+                    logger.exception(
+                        "Task %s: item %s (%s) failed: %s",
+                        task_id,
+                        item.id,
+                        item.raw_word,
+                        str(err),
+                    )
+                    await self._fail_item(item, err)
                     return err
 
         results = await asyncio.gather(
             *(process_item(item) for item in items), return_exceptions=True
         )
         has_errors = any(r is not None for r in results)
+
+        # Контракт §7.4 №2: ExternalServiceError пробрасывается наружу,
+        # чтобы воркер запланировал ретрай задачи.
+        external_failures = [r for r in results if isinstance(r, ExternalServiceError)]
+        if external_failures:
+            logger.error(
+                "Task %s: %d item(s) failed with ExternalServiceError, "
+                "propagating for retry",
+                task_id,
+                len(external_failures),
+            )
+            raise external_failures[0]
 
         try:
             cards = await self._deckcard_service.list_by_task(task.id)
@@ -91,11 +115,20 @@ class DeckPipeline:
                     cards,
                 )
         except (ServiceError, OSError) as e:
+            logger.error(
+                "Task %s: export failed, marking for retry: %s", task_id, str(e)
+            )
             await self._decktask_service.mark_for_retry_or_fail(task.id, e)
             return
 
         task_status = "PARTIALLY_DONE" if has_errors else "DONE"
+        logger.info("Task %s: completed with status %s", task_id, task_status)
         await self._decktask_service.complete_task(task_id, task_status)
+
+    async def _fail_item(self, item: DeckItemDTO, err: Exception):
+        item.status = "ERROR"
+        item.error = str(err) or type(err).__name__
+        await self._deckitem_service.update_item(item)
 
     async def set_in_progress_status(self, item: DeckItemDTO):
         if item.status in {"PENDING", "ERROR"}:
@@ -106,10 +139,6 @@ class DeckPipeline:
         if item.status == "PROCESSING":
             item.status = "DONE"
             item.stage = "DONE"
-
-    async def set_error_status(self, item: DeckItemDTO):
-        if item.status == "PROCESSING":
-            item.status = "ERROR"
 
     async def normalize_word(self, item: DeckItemDTO):
         normilized_word = self._normalizer.lemmatize_word(item.raw_word)
