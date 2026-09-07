@@ -427,16 +427,20 @@ async def test_pipeline_all_items_failed_completes_partially_done_without_retry(
     db_session.add_all([item_1, item_2])
     await db_session.commit()
 
+    # Захватываем id до expire_all: обращение к атрибуту expired-объекта
+    # вне greenlet-контекста вызывает MissingGreenlet.
+    task_id = task.id
+
     async def failing_context(item, *args, **kwargs):
         raise RuntimeError(f"no context for {item.raw_word}")
 
     monkeypatch.setattr(pipeline, "get_context_sentence", failing_context)
 
-    await pipeline.run(task.id)
+    await pipeline.run(task_id)
 
     db_session.expire_all()
     res_task = await db_session.execute(
-        select(DeckTask).where(DeckTask.id == task.id)
+        select(DeckTask).where(DeckTask.id == task_id)
     )
     updated_task = res_task.scalar_one()
 
@@ -446,7 +450,7 @@ async def test_pipeline_all_items_failed_completes_partially_done_without_retry(
     assert fake_anki.export_calls == []
 
     res_items = await db_session.execute(
-        select(DeckItem).where(DeckItem.task_id == task.id)
+        select(DeckItem).where(DeckItem.task_id == task_id)
     )
     items = res_items.scalars().all()
     assert len(items) == 2
@@ -485,6 +489,10 @@ async def test_pipeline_partial_failure_with_cards_exports_and_completes(
     db_session.add_all([item_cat, item_dog])
     await db_session.commit()
 
+    # Захватываем id до expire_all: обращение к атрибуту expired-объекта
+    # вне greenlet-контекста вызывает MissingGreenlet.
+    task_id = task.id
+
     original_get_context = pipeline.get_context_sentence
 
     async def maybe_failing_context(item, *args, **kwargs):
@@ -494,11 +502,11 @@ async def test_pipeline_partial_failure_with_cards_exports_and_completes(
 
     monkeypatch.setattr(pipeline, "get_context_sentence", maybe_failing_context)
 
-    await pipeline.run(task.id)
+    await pipeline.run(task_id)
 
     db_session.expire_all()
     res_task = await db_session.execute(
-        select(DeckTask).where(DeckTask.id == task.id)
+        select(DeckTask).where(DeckTask.id == task_id)
     )
     updated_task = res_task.scalar_one()
 
@@ -506,11 +514,11 @@ async def test_pipeline_partial_failure_with_cards_exports_and_completes(
 
     assert len(fake_anki.export_calls) == 1
     exported_task_id, _, exported_cards = fake_anki.export_calls[0]
-    assert exported_task_id == task.id
+    assert exported_task_id == task_id
     assert [card.word for card in exported_cards] == ["cat"]
 
     res_items = await db_session.execute(
-        select(DeckItem).where(DeckItem.task_id == task.id)
+        select(DeckItem).where(DeckItem.task_id == task_id)
     )
     items_by_word = {item.raw_word: item for item in res_items.scalars().all()}
     assert items_by_word["cat"].status == "DONE"
@@ -518,7 +526,7 @@ async def test_pipeline_partial_failure_with_cards_exports_and_completes(
     assert items_by_word["dog"].error
 
     res_cards = await db_session.execute(
-        select(DeckCard).where(DeckCard.task_id == task.id)
+        select(DeckCard).where(DeckCard.task_id == task_id)
     )
     cards = res_cards.scalars().all()
     assert {card.word for card in cards} == {"cat"}
