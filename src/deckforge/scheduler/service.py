@@ -12,7 +12,6 @@ from deckforge.services.decks.decktask import DeckTaskService
 
 logger = logging.getLogger(__name__)
 
-
 class RetryScheduler:
     def __init__(
         self,
@@ -29,14 +28,12 @@ class RetryScheduler:
         self._task_timeout_per_item = task_timeout_per_item
 
     async def tick(self):
-        due_tasks = await self._decktask_service.find_ready_for_retry()
-
-        for task in due_tasks:
-            try:
-                await self._decktask_service.reschedule_for_retry(task.id)
-                logger.info("Task %s was retried", task.id)
-            except Exception:
-                logger.exception("Failed to reschedule task %s", task.id)
+        try:
+            rescheduled = await self._decktask_service.reschedule_ready_tasks()
+            for task_id in rescheduled:
+                logger.info("Task %s was retried", task_id)
+        except Exception:
+            logger.exception("Failed to reschedule due tasks")
 
         await self._requeue_stale_tasks()
 
@@ -70,7 +67,6 @@ class RetryScheduler:
                 )
             except Exception:
                 logger.exception("Failed to requeue stale task %s", task.id)
-
 
 class SchedulerProvider(Provider):
     config = from_context(Config, scope=Scope.APP)

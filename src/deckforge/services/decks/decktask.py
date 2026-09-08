@@ -175,6 +175,29 @@ class DeckTaskService:
             except DAOError as e:
                 raise ServiceError(str(e)) from e
 
+    async def reschedule_ready_tasks(self) -> List[UUID]:
+        try:
+            async with self._sessionmaker() as session, session.begin():
+                tasks = await self._decktask_dao.get_tasks_ready_for_retry(
+                    session, datetime.now()
+                )
+                rescheduled: List[UUID] = []
+                for task in tasks:
+                    claimed = await self._decktask_dao.claim_for_reschedule(
+                        task.id, session
+                    )
+                    if not claimed:
+                        continue
+                    event = OutboxEventCreateDTO(
+                        payload={"task_id": str(task.id)},
+                        event_type="deck_task_requested",
+                    )
+                    await self._outbox_event_dao.create(event, session)
+                    rescheduled.append(task.id)
+                return rescheduled
+        except DAOError as e:
+            raise ServiceError(str(e)) from e
+
     async def complete_task(self, task_id: UUID, status: str):
         async with self._sessionmaker() as session, session.begin():
             try:
