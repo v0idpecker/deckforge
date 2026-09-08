@@ -52,7 +52,6 @@ from deckforge.services.llm_cache import LLMCacheService
 
 # base test fixtures
 
-
 class TestDBProvider(Provider):
     def __init__(self, sessionmaker):
         super().__init__()
@@ -69,7 +68,6 @@ class TestDBProvider(Provider):
         async with sessionmaker() as session:
             yield session
 
-
 class TestPublisherProvider(Provider):
     def __init__(self, publisher):
         super().__init__()
@@ -79,14 +77,12 @@ class TestPublisherProvider(Provider):
     async def get_publisher(self) -> RabbitPublisher:
         return self._publisher
 
-
 class FakePublisher(RabbitPublisher):
     def __init__(self):
         self.messages = []
 
     async def send(self, msg: str):
         self.messages.append(msg)
-
 
 @pytest_asyncio.fixture
 async def engine():
@@ -101,7 +97,6 @@ async def engine():
         await conn.run_sync(Base.metadata.drop_all)
     await engine.dispose()
 
-
 @pytest_asyncio.fixture
 async def sessionmaker(engine):
     return async_sessionmaker(
@@ -111,18 +106,15 @@ async def sessionmaker(engine):
         autoflush=False,
     )
 
-
 @pytest_asyncio.fixture
 async def db_session(sessionmaker):
     async with sessionmaker() as session:
         yield session
         await session.rollback()
 
-
 @pytest_asyncio.fixture
 async def fake_publisher():
     return FakePublisher()
-
 
 @pytest_asyncio.fixture
 async def container(sessionmaker, fake_publisher, fake_context_generator):
@@ -137,7 +129,6 @@ async def container(sessionmaker, fake_publisher, fake_context_generator):
 
     await container.close()
 
-
 @pytest_asyncio.fixture
 async def test_user(db_session) -> UserDTO:
     user = User(email="user@example.com", name="test-user", google_id="google-test-id")
@@ -146,7 +137,6 @@ async def test_user(db_session) -> UserDTO:
     await db_session.refresh(user)
 
     return UserDTO.from_entity(user)
-
 
 @pytest_asyncio.fixture
 async def app(container, test_user):
@@ -164,7 +154,6 @@ async def app(container, test_user):
 
     app.dependency_overrides.clear()
 
-
 @pytest_asyncio.fixture
 async def client(app):
     transport = httpx.ASGITransport(app=app)
@@ -172,9 +161,7 @@ async def client(app):
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
         yield client
 
-
 # auth test fixtures
-
 
 @pytest_asyncio.fixture
 async def test_config():
@@ -195,7 +182,6 @@ async def test_config():
             cors_origins=["http://frontend.test"],
         ),
     )
-
 
 class FakeGoogleOAuthAdatper(GoogleOAuthAdapter):
     def __init__(self):
@@ -218,7 +204,6 @@ class FakeGoogleOAuthAdatper(GoogleOAuthAdapter):
             url=f"https://google.test/oauth?redirect_uri={redirect_uri}"
         )
 
-
 class TestAuthProvider(Provider):
     def __init__(self, config: Config, oauth: GoogleOAuthAdapter):
         super().__init__()
@@ -237,21 +222,17 @@ class TestAuthProvider(Provider):
     async def get_jwt_adapter(self) -> JWTAdapter:
         return JWTAdapter(self._config.security)
 
-
 @pytest_asyncio.fixture
 async def jwt_adapter(test_config):
     return JWTAdapter(test_config.security)
-
 
 @pytest_asyncio.fixture
 async def fake_oauth():
     return FakeGoogleOAuthAdatper()
 
-
 @pytest_asyncio.fixture
 async def auth_provider(test_config, fake_oauth):
     return TestAuthProvider(test_config, fake_oauth)
-
 
 @pytest_asyncio.fixture
 async def auth_container(
@@ -269,7 +250,6 @@ async def auth_container(
 
     await container.close()
 
-
 @pytest_asyncio.fixture
 async def auth_app(auth_container):
     app = FastAPI()
@@ -280,7 +260,6 @@ async def auth_app(auth_container):
 
     yield app
 
-
 @pytest_asyncio.fixture
 async def auth_client(auth_app):
     transport = httpx.ASGITransport(app=auth_app)
@@ -288,9 +267,7 @@ async def auth_client(auth_app):
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
         yield client
 
-
 # pipeline test fixtures
-
 
 class FakeNormalizer:
     def __init__(self) -> None:
@@ -299,7 +276,6 @@ class FakeNormalizer:
     def lemmatize_word(self, word: str):
         self.calls.append(word)
         return word.lower()
-
 
 class FakeContextGenerator:
     def __init__(self) -> None:
@@ -339,7 +315,6 @@ class FakeContextGenerator:
             for _ in range(limit)
         ]
 
-
 class FakeLLMGenerator:
     def __init__(self, model: str = "fake-model"):
         self.model = model
@@ -362,7 +337,6 @@ class FakeLLMGenerator:
             for i in range(limit)
         ]
 
-
 class FakeAnki:
     def __init__(self):
         self.export_calls = []
@@ -370,9 +344,7 @@ class FakeAnki:
     def export_deck(self, task_id, deck_name, cards):
         self.export_calls.append((task_id, deck_name, cards))
 
-
 # фейк OpenAI-клиента: последовательность ответов на chat.completions.parse
-
 
 class FakeLLMCompletions:
     def __init__(self, responses: list):
@@ -384,11 +356,9 @@ class FakeLLMCompletions:
         self.calls += 1
         return response
 
-
 class FakeOpenAIClient:
     def __init__(self, responses: list):
         self.chat = SimpleNamespace(completions=FakeLLMCompletions(responses))
-
 
 class TestContextGenProvider(Provider):
     def __init__(self, generator: ContextGenerator):
@@ -399,61 +369,56 @@ class TestContextGenProvider(Provider):
     async def get_context_generator(self) -> ContextGenerator:
         return self._generator
 
-
 @pytest_asyncio.fixture
 async def decktask_dao():
     return DeckTaskDAO()
-
 
 @pytest_asyncio.fixture
 async def deckitem_dao():
     return DeckItemDAO()
 
-
 @pytest_asyncio.fixture
 async def deckitem_service(deckitem_dao, sessionmaker):
     return DeckItemSerivce(deckitem_dao, sessionmaker)
-
 
 @pytest_asyncio.fixture
 async def deckcard_dao():
     return DeckCardDAO()
 
-
 @pytest_asyncio.fixture
 async def deckcard_service(deckcard_dao, sessionmaker):
     return DeckCardService(deckcard_dao, sessionmaker)
-
 
 @pytest_asyncio.fixture
 async def outbox_dao():
     return OutboxEventDAO()
 
-
 @pytest_asyncio.fixture
 async def decktask_service(sessionmaker, deckitem_dao, decktask_dao, outbox_dao):
     return DeckTaskService(sessionmaker, deckitem_dao, decktask_dao, outbox_dao)
 
-
 @pytest_asyncio.fixture
 async def scheduler(decktask_service, sessionmaker, outbox_dao):
-    return RetryScheduler(decktask_service, sessionmaker, outbox_dao)
-
+    # небольшие таймауты: дедлайн задачи с 1 item = base + per_item = 15 секунд
+    return RetryScheduler(
+        decktask_service,
+        sessionmaker,
+        outbox_dao,
+        task_timeout_base=10,
+        task_timeout_per_item=5,
+    )
 
 @pytest_asyncio.fixture
 async def fake_normalizer():
     return FakeNormalizer()
 
-
 @pytest_asyncio.fixture
 async def fake_context_generator():
     return FakeContextGenerator()
 
-
 @pytest_asyncio.fixture
 async def fake_anki():
     return FakeAnki()
-
 
 @pytest.fixture
 def make_openai_client():
@@ -461,7 +426,6 @@ def make_openai_client():
         return FakeOpenAIClient(responses)
 
     return _factory
-
 
 @pytest.fixture
 def make_llm_response():
@@ -471,26 +435,21 @@ def make_llm_response():
 
     return _factory
 
-
 @pytest_asyncio.fixture
 async def llm_cache_dao():
     return LLMCacheDAO()
-
 
 @pytest_asyncio.fixture
 async def llm_cache_service(sessionmaker, llm_cache_dao):
     return LLMCacheService(sessionmaker, llm_cache_dao)
 
-
 @pytest_asyncio.fixture
 async def fake_llm_generator():
     return FakeLLMGenerator()
 
-
 @pytest_asyncio.fixture
 async def context_gen_service(sessionmaker, fake_llm_generator, llm_cache_service):
     return ContextGenerationService(sessionmaker, fake_llm_generator, llm_cache_service)
-
 
 @pytest_asyncio.fixture
 async def pipeline(
@@ -510,7 +469,6 @@ async def pipeline(
         fake_anki,
         concurrency=4,
     )
-
 
 @pytest.fixture
 def make_llm_pipeline(
@@ -535,9 +493,7 @@ def make_llm_pipeline(
 
     return _factory
 
-
 # worker fixtures
-
 
 class FakePipeline(DeckPipeline):
     def __init__(self):
@@ -554,7 +510,6 @@ class FakePipeline(DeckPipeline):
         self.processed_task_ids.append(task_id)
         self.event.set()
 
-
 class TestPipelineProvider(Provider):
     def __init__(self, pipeline: DeckPipeline):
         super().__init__()
@@ -564,14 +519,12 @@ class TestPipelineProvider(Provider):
     def get_pipeline(self) -> DeckPipeline:
         return self._pipeline
 
-
 class FakeDeckTaskService(DeckTaskService):
     def __init__(self):
         self.retried: list[tuple[UUID, Exception]] = []
 
     async def mark_for_retry_or_fail(self, task_id: UUID, error: Exception):
         self.retried.append((task_id, error))
-
 
 class TestTaskServiceProvider(Provider):
     def __init__(self, service: FakeDeckTaskService):
@@ -582,7 +535,6 @@ class TestTaskServiceProvider(Provider):
     async def get_task_service(self) -> DeckTaskService:
         return self._service
 
-
 @pytest_asyncio.fixture
 async def rabbit_config():
     return Config(
@@ -592,26 +544,21 @@ async def rabbit_config():
         )
     )
 
-
 @pytest_asyncio.fixture
 async def fake_pipeline():
     return FakePipeline()
-
 
 @pytest_asyncio.fixture
 async def fake_task_service():
     return FakeDeckTaskService()
 
-
 @pytest_asyncio.fixture
 async def broker(rabbit_config):
     return RabbitBroker(rabbit_config.rabbitmq.url)
 
-
 @pytest_asyncio.fixture
 async def publisher(rabbit_config, broker):
     return RabbitPublisher(broker=broker, queue_name=rabbit_config.queue_name)
-
 
 @pytest_asyncio.fixture
 async def faststream_app(rabbit_config, fake_pipeline, fake_task_service, broker):

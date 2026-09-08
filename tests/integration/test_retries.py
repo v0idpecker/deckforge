@@ -14,7 +14,6 @@ from deckforge.scheduler.service import RetryScheduler
 
 pytestmark = pytest.mark.asyncio
 
-
 class FixedDateTime(datetime.datetime):
     """Deterministic clock used instead of datetime.now() in retry logic."""
 
@@ -32,15 +31,12 @@ class FixedDateTime(datetime.datetime):
             cls.current.microsecond,
         )
 
-
 def freeze_time(monkeypatch):
     FixedDateTime.current = datetime.datetime(2025, 6, 1, 12, 0, 0)
     monkeypatch.setattr("deckforge.services.decks.decktask.datetime", FixedDateTime)
 
-
 def advance_time(**kwargs):
     FixedDateTime.current = FixedDateTime.current + datetime.timedelta(**kwargs)
-
 
 def make_task(status: str, user_id, **kwargs) -> DeckTask:
     defaults = dict(
@@ -50,7 +46,6 @@ def make_task(status: str, user_id, **kwargs) -> DeckTask:
     )
     defaults.update(kwargs)
     return DeckTask(status=status, user_id=user_id, **defaults)
-
 
 @allure.feature("Retries")
 @allure.story("Retry scheduling")
@@ -76,7 +71,6 @@ async def test_first_error_schedules_retry(
     assert task.error == "boom"
     assert task.next_retry_at == FixedDateTime(2025, 6, 1, 12, 0, 2)
 
-
 @allure.feature("Retries")
 @allure.story("Retry scheduling")
 async def test_backoff_grows_exponentially(
@@ -99,7 +93,6 @@ async def test_backoff_grows_exponentially(
 
     assert task.attempt_count == 2
     assert task.next_retry_at == FixedDateTime(2025, 6, 1, 12, 0, 4)
-
 
 @allure.feature("Retries")
 @allure.story("Retry scheduling")
@@ -128,7 +121,6 @@ async def test_task_fails_after_max_attempts(
     assert task.error == "error-3"
     assert task.next_retry_at == FixedDateTime(2025, 6, 1, 12, 0, 8)
 
-
 @allure.feature("Retries")
 @allure.story("Retry scheduling")
 async def test_mark_for_retry_does_not_touch_finished_task(
@@ -147,7 +139,6 @@ async def test_mark_for_retry_does_not_touch_finished_task(
 
     assert task.status == "DONE"
     assert task.attempt_count == 0
-
 
 @allure.feature("Retries")
 @allure.story("Retry queue")
@@ -182,7 +173,6 @@ async def test_find_ready_for_retry_returns_only_due_tasks(
 
     assert [task.id for task in ready] == [due.id]
 
-
 @allure.feature("Retries")
 @allure.story("Concurrency")
 async def test_claim_returns_false_when_task_is_not_pending(
@@ -199,7 +189,6 @@ async def test_claim_returns_false_when_task_is_not_pending(
     assert claimed is False
     await db_session.refresh(task)
     assert task.status == "PROCESSING"
-
 
 @allure.feature("Retries")
 @allure.story("Scheduler")
@@ -233,7 +222,6 @@ async def test_tick_requeues_due_task_and_creates_single_event(
     assert events[0].payload["task_id"] == str(task.id)
     assert events[0].status == EventStatus.NEW
 
-
 @allure.feature("Retries")
 @allure.story("Scheduler")
 async def test_tick_is_idempotent_for_requeued_task(
@@ -264,7 +252,6 @@ async def test_tick_is_idempotent_for_requeued_task(
     events = (await db_session.execute(select(OutboxEvent))).scalars().all()
     assert len(events) == 1
 
-
 @allure.feature("Retries")
 @allure.story("Scheduler")
 async def test_failed_task_is_not_requeued(
@@ -293,7 +280,6 @@ async def test_failed_task_is_not_requeued(
 
     events = (await db_session.execute(select(OutboxEvent))).scalars().all()
     assert events == []
-
 
 @allure.feature("Retries")
 @allure.story("Worker contract")
@@ -338,7 +324,6 @@ async def test_pipeline_failure_schedules_retry(
     assert task.status == "RETRY_SCHEDULED"
     assert task.attempt_count == 1
 
-
 @allure.feature("Retries")
 @allure.story("Retry lifecycle")
 async def test_retry_reprocesses_error_items(
@@ -377,7 +362,6 @@ async def test_retry_reprocesses_error_items(
 
     assert broken.status == "DONE"
     assert task.status == "DONE"
-
 
 @allure.feature("Retries")
 @allure.story("Retry lifecycle")
@@ -435,7 +419,6 @@ async def test_full_retry_cycle_failure_then_success(
     assert task.attempt_count == 0
     assert task.next_retry_at is None
 
-
 @allure.feature("Retries")
 @allure.story("Retry lifecycle")
 async def test_successful_run_resets_retry_counters(
@@ -472,3 +455,95 @@ async def test_successful_run_resets_retry_counters(
     assert task.attempt_count == 0
     assert task.next_retry_at is None
     assert task.error is None
+
+# --- Watchdog (stale PROCESSING tasks) --------------------------------------
+# Таймауты фикстуры scheduler: task_timeout_base=10, task_timeout_per_item=5.
+# Дедлайн задачи с total_items=1: 10 + 5 * 1 = 15 секунд от updated_at.
+
+@allure.feature("Retries")
+@allure.story("Watchdog")
+async def test_stale_processing_task_is_requeued_by_tick(
+    scheduler: RetryScheduler,
+    db_session: AsyncSession,
+    test_user: UserDTO,
+):
+    stale_updated_at = datetime.datetime.now() - datetime.timedelta(minutes=5)
+
+    task = make_task(
+        status="PROCESSING",
+        user_id=test_user.id,
+        updated_at=stale_updated_at,
+    )
+    db_session.add(task)
+    await db_session.commit()
+
+    await scheduler.tick()
+
+    db_session.expire_all()
+    await db_session.refresh(task)
+
+    assert task.status == "RETRY_SCHEDULED"
+    assert task.attempt_count == 1
+    assert task.error == "task processing timed out"
+    assert task.next_retry_at is not None
+
+    # watchdog только планирует ретрай; переотправку делает обычный проход
+    # по задачам с наступившим next_retry_at
+    events = (await db_session.execute(select(OutboxEvent))).scalars().all()
+    assert events == []
+
+@allure.feature("Retries")
+@allure.story("Watchdog")
+async def test_fresh_processing_task_is_not_touched_by_tick(
+    scheduler: RetryScheduler,
+    db_session: AsyncSession,
+    test_user: UserDTO,
+):
+    fresh_updated_at = datetime.datetime.now() - datetime.timedelta(seconds=2)
+
+    task = make_task(
+        status="PROCESSING",
+        user_id=test_user.id,
+        updated_at=fresh_updated_at,
+    )
+    db_session.add(task)
+    await db_session.commit()
+
+    await scheduler.tick()
+
+    db_session.expire_all()
+    await db_session.refresh(task)
+
+    assert task.status == "PROCESSING"
+    assert task.attempt_count == 0
+    assert task.error is None
+
+    events = (await db_session.execute(select(OutboxEvent))).scalars().all()
+    assert events == []
+
+@allure.feature("Retries")
+@allure.story("Watchdog")
+async def test_stale_task_fails_after_max_attempts(
+    scheduler: RetryScheduler,
+    db_session: AsyncSession,
+    test_user: UserDTO,
+):
+    stale_updated_at = datetime.datetime.now() - datetime.timedelta(minutes=5)
+
+    task = make_task(
+        status="PROCESSING",
+        user_id=test_user.id,
+        attempt_count=3,
+        updated_at=stale_updated_at,
+    )
+    db_session.add(task)
+    await db_session.commit()
+
+    await scheduler.tick()
+
+    db_session.expire_all()
+    await db_session.refresh(task)
+
+    assert task.status == "FAILED"
+    assert task.attempt_count == 3
+    assert task.error == "task processing timed out"
