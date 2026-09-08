@@ -28,7 +28,6 @@ from deckforge.services.errors import (
 
 MAX_ATTEMPTS = 3
 
-
 class DeckTaskService:
     def __init__(
         self,
@@ -162,6 +161,17 @@ class DeckTaskService:
                 )
             except DAOError as e:
                 raise ServiceError(str(e)) from e
+
+    async def find_stale_processing_tasks(
+        self, older_than: datetime
+    ) -> List[DeckTaskDTO]:
+        async with self._sessionmaker() as session, session.begin():
+            try:
+                return await self._decktask_dao.get_stale_processing_tasks(
+                    session, older_than
+                )
+            except DAOError as e:
+                raise DataAccessError(str(e)) from e
 
     async def reschedule_for_retry(self, task_id: UUID):
         async with self._sessionmaker() as session, session.begin():

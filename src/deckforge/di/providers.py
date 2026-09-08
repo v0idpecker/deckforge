@@ -25,7 +25,6 @@ from deckforge.services.decks.decktask import DeckTaskService
 from deckforge.services.llm_cache import LLMCacheService
 from deckforge.services.user import UserService
 
-
 class DBProvider(Provider):
     config = from_context(provides=Config, scope=Scope.APP)
 
@@ -42,7 +41,6 @@ class DBProvider(Provider):
         async with sessionmaker() as session:
             yield session
 
-
 class DAOProvider(Provider):
     decktask_dao = provide(DeckTaskDAO, scope=Scope.REQUEST)
     deckitem_dao = provide(DeckItemDAO, scope=Scope.REQUEST)
@@ -50,7 +48,6 @@ class DAOProvider(Provider):
     user_dao = provide(UserDAO, scope=Scope.REQUEST)
     outbox_event_dao = provide(OutboxEventDAO, scope=Scope.REQUEST)
     llm_cache_dao = provide(LLMCacheDAO, scope=Scope.REQUEST)
-
 
 class AMQPProvider(Provider):
     broker = from_context(provides=RabbitBroker, scope=Scope.APP)
@@ -61,7 +58,6 @@ class AMQPProvider(Provider):
         self, broker: RabbitBroker, config: Config
     ) -> RabbitPublisher:
         return RabbitPublisher(broker, config.rabbitmq.queue_name)
-
 
 class ServiceProvider(Provider):
     @provide(scope=Scope.REQUEST)
@@ -109,7 +105,6 @@ class ServiceProvider(Provider):
     ) -> ContextGenerationService:
         return ContextGenerationService(sessionmaker, generator, cache_service)
 
-
 class PipelineProvider(Provider):
     config = from_context(provides=Config, scope=Scope.APP)
 
@@ -134,7 +129,6 @@ class PipelineProvider(Provider):
             config.asyncio.concurrency,
         )
 
-
 class WordProcessingProvider(Provider):
     config = from_context(provides=Config, scope=Scope.APP)
     lemmatizer = provide(WordNetLemmatizer, scope=Scope.REQUEST)
@@ -156,7 +150,6 @@ class WordProcessingProvider(Provider):
             api_key=config.llm.api_key.get_secret_value(), base_url=config.llm.base_url
         )
 
-
 class SecurityProvider(Provider):
     config = from_context(provides=Config, scope=Scope.APP)
 
@@ -167,7 +160,6 @@ class SecurityProvider(Provider):
     @provide(scope=Scope.REQUEST)
     async def get_jwt_adapter(self, config: Config) -> JWTAdapter:
         return JWTAdapter(config.security)
-
 
 class HTTPProvder(Provider):
     if TYPE_CHECKING:
