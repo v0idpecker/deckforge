@@ -2,7 +2,8 @@ import datetime
 from typing import List
 from uuid import UUID
 
-from sqlalchemy import case, delete, func
+from sqlalchemy import case, cast, delete, func
+from sqlalchemy import DateTime
 from sqlalchemy.exc import (
     DataError,
     IntegrityError,
@@ -148,6 +149,12 @@ class DeckTaskDAO:
             attempt = DeckTask.attempt_count
             new_attempt = attempt + 1
             backoff_seconds = func.least(func.pow(2, new_attempt), 32)
+            # cast(now, DateTime) фиксирует тип параметра как timestamp:
+            # без него Postgres выводит для "$now + interval" тип interval,
+            # и CASE(interval, timestamp) падает на prepare
+            retry_at = cast(now, DateTime) + func.make_interval(
+                0, 0, 0, 0, 0, 0, backoff_seconds
+            )
             exhausted = attempt >= max_attempts
             stmt = (
                 update(DeckTask)
@@ -163,9 +170,7 @@ class DeckTaskDAO:
                     ),
                     next_retry_at=case(
                         (exhausted, DeckTask.next_retry_at),
-                        else_=now + func.make_interval(
-                            0, 0, 0, 0, 0, 0, backoff_seconds
-                        ),
+                        else_=retry_at,
                     ),
                     error=error,
                 )
