@@ -15,36 +15,22 @@ from deckforge.scheduler.service import RetryScheduler
 
 pytestmark = pytest.mark.asyncio
 
-class FixedDateTime(datetime.datetime):
-    """Deterministic aware-UTC clock used instead of datetime.now(timezone.utc)."""
+FROZEN_NOW = datetime.datetime(2025, 6, 1, 12, 0, 0, tzinfo=datetime.timezone.utc)
 
-    current = datetime.datetime(2025, 6, 1, 12, 0, 0, tzinfo=datetime.timezone.utc)
+def frozen_clock() -> datetime.datetime:
+    return FROZEN_NOW
 
-    def __new__(cls, *args, **kwargs):
-        kwargs.setdefault("tzinfo", datetime.timezone.utc)
-        return super().__new__(cls, *args, **kwargs)
-
-    @classmethod
-    def now(cls, tz=None):
-        return cls(
-            cls.current.year,
-            cls.current.month,
-            cls.current.day,
-            cls.current.hour,
-            cls.current.minute,
-            cls.current.second,
-            cls.current.microsecond,
-            tzinfo=cls.current.tzinfo,
-        )
+def utc_dt(*args) -> datetime.datetime:
+    return datetime.datetime(*args, tzinfo=datetime.timezone.utc)
 
 def freeze_time(monkeypatch, decktask_service):
-    FixedDateTime.current = datetime.datetime(
-        2025, 6, 1, 12, 0, 0, tzinfo=datetime.timezone.utc
-    )
-    monkeypatch.setattr(decktask_service, "_clock", FixedDateTime.now)
+    global FROZEN_NOW
+    FROZEN_NOW = datetime.datetime(2025, 6, 1, 12, 0, 0, tzinfo=datetime.timezone.utc)
+    monkeypatch.setattr(decktask_service, "_clock", frozen_clock)
 
 def advance_time(**kwargs):
-    FixedDateTime.current = FixedDateTime.current + datetime.timedelta(**kwargs)
+    global FROZEN_NOW
+    FROZEN_NOW = FROZEN_NOW + datetime.timedelta(**kwargs)
 
 def make_task(status: str, user_id, **kwargs) -> DeckTask:
     defaults = dict(
@@ -77,7 +63,7 @@ async def test_first_error_schedules_retry(
     assert task.status == "RETRY_SCHEDULED"
     assert task.attempt_count == 1
     assert task.error == "boom"
-    assert task.next_retry_at == FixedDateTime(2025, 6, 1, 12, 0, 2)
+    assert task.next_retry_at == utc_dt(2025, 6, 1, 12, 0, 2)
 
 @allure.feature("Retries")
 @allure.story("Retry scheduling")
@@ -100,7 +86,7 @@ async def test_backoff_grows_exponentially(
     await db_session.refresh(task)
 
     assert task.attempt_count == 2
-    assert task.next_retry_at == FixedDateTime(2025, 6, 1, 12, 0, 4)
+    assert task.next_retry_at == utc_dt(2025, 6, 1, 12, 0, 4)
 
 @allure.feature("Retries")
 @allure.story("Retry scheduling")
@@ -127,7 +113,7 @@ async def test_task_fails_after_max_attempts(
     assert task.status == "FAILED"
     assert task.attempt_count == 3
     assert task.error == "error-3"
-    assert task.next_retry_at == FixedDateTime(2025, 6, 1, 12, 0, 8)
+    assert task.next_retry_at == utc_dt(2025, 6, 1, 12, 0, 8)
 
 @allure.feature("Retries")
 @allure.story("Retry scheduling")
@@ -157,7 +143,7 @@ async def test_find_ready_for_retry_returns_only_due_tasks(
     monkeypatch,
 ):
     freeze_time(monkeypatch, decktask_service)
-    now = FixedDateTime(2025, 6, 1, 12, 0, 0)
+    now = FROZEN_NOW
 
     due = make_task(
         status="RETRY_SCHEDULED",
@@ -238,7 +224,7 @@ async def test_concurrent_mark_for_retry_fails_exactly_once_after_max_attempts(
         status="RETRY_SCHEDULED",
         user_id=test_user.id,
         attempt_count=3,
-        next_retry_at=FixedDateTime.current - datetime.timedelta(minutes=1),
+        next_retry_at=FROZEN_NOW - datetime.timedelta(minutes=1),
     )
     db_session.add(task)
     await db_session.commit()
@@ -265,7 +251,7 @@ async def test_concurrent_reschedule_creates_single_outbox_event(
     monkeypatch,
 ):
     freeze_time(monkeypatch, decktask_service)
-    now = FixedDateTime(2025, 6, 1, 12, 0, 0)
+    now = FROZEN_NOW
 
     task = make_task(
         status="RETRY_SCHEDULED",
@@ -304,7 +290,7 @@ async def test_tick_requeues_due_task_and_creates_single_event(
     monkeypatch,
 ):
     freeze_time(monkeypatch, decktask_service)
-    now = FixedDateTime(2025, 6, 1, 12, 0, 0)
+    now = FROZEN_NOW
 
     task = make_task(
         status="RETRY_SCHEDULED",
@@ -337,7 +323,7 @@ async def test_tick_is_idempotent_for_requeued_task(
     monkeypatch,
 ):
     freeze_time(monkeypatch, decktask_service)
-    now = FixedDateTime(2025, 6, 1, 12, 0, 0)
+    now = FROZEN_NOW
 
     task = make_task(
         status="RETRY_SCHEDULED",
@@ -440,7 +426,7 @@ async def test_retry_reprocesses_error_items(
     monkeypatch,
 ):
     freeze_time(monkeypatch, decktask_service)
-    now = FixedDateTime(2025, 6, 1, 12, 0, 0)
+    now = FROZEN_NOW
 
     task = make_task(
         status="RETRY_SCHEDULED",
