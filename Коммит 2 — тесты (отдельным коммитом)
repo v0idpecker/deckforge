@@ -1,0 +1,2 @@
+git add tests/integration/test_retries.py
+git commit -m "added tests for atomic retry transitions"
