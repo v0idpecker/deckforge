@@ -2,15 +2,18 @@ import os
 
 from pydantic import BaseModel, Field, SecretStr
 
-
 def _csv_env(name: str, default: str) -> list[str]:
     value = os.getenv(name, default)
     return [item.strip() for item in value.split(",") if item.strip()]
 
-
 class AsyncioConfig(BaseModel):
     concurrency: int = 5
-
+    task_timeout_base: int = Field(
+        default_factory=lambda: int(os.getenv("TASK_TIMEOUT_BASE", "120"))
+    )
+    task_timeout_per_item: int = Field(
+        default_factory=lambda: int(os.getenv("TASK_TIMEOUT_PER_ITEM", "30"))
+    )
 
 class PostgresConfig(BaseModel):
     url: str = Field(default_factory=lambda: str(os.getenv("POSTGRES_URL")))
@@ -18,11 +21,9 @@ class PostgresConfig(BaseModel):
     max_overflow: int = 20
     pool_recycle: int = 3600
 
-
 class RabbitMQConfig(BaseModel):
     url: str = Field(default_factory=lambda: str(os.getenv("RABBITMQ_URL")))
     queue_name: str = "pipeline_queue"
-
 
 class LLMConfig(BaseModel):
     api_key: SecretStr = Field(
@@ -30,7 +31,6 @@ class LLMConfig(BaseModel):
     )
     base_url: str = Field(default_factory=lambda: str(os.getenv("LLM_BASE_URL")))
     model: str = Field(default_factory=lambda: str(os.getenv("LLM_MODEL")))
-
 
 class SecurityConfig(BaseModel):
     google_client_id: str = Field(
@@ -43,7 +43,6 @@ class SecurityConfig(BaseModel):
     session_secret: str = Field(
         default_factory=lambda: str(os.getenv("SESSION_SECRET"))
     )
-
 
 class AppConfig(BaseModel):
     backend_public_url: str = Field(
@@ -60,11 +59,9 @@ class AppConfig(BaseModel):
         default_factory=lambda: _csv_env("CORS_ORIGINS", "http://localhost:5173")
     )
 
-
 class LoggingConfig(BaseModel):
     level: str = Field(default_factory=lambda: os.getenv("LOG_LEVEL", "INFO"))
     format: str = Field(default_factory=lambda: os.getenv("LOG_FORMAT", "text"))
-
 
 class Config(BaseModel):
     postgres: PostgresConfig = Field(default_factory=PostgresConfig)
@@ -74,7 +71,6 @@ class Config(BaseModel):
     app: AppConfig = Field(default_factory=AppConfig)
     asyncio: AsyncioConfig = Field(default_factory=AsyncioConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
-
 
 def create_config():
     return Config()
