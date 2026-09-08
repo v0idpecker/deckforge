@@ -149,10 +149,11 @@ class DeckTaskDAO:
             attempt = DeckTask.attempt_count
             new_attempt = attempt + 1
             backoff_seconds = func.least(func.pow(2, new_attempt), 32)
-            # cast(now, DateTime) фиксирует тип параметра как timestamp:
-            # без него Postgres выводит для "$now + interval" тип interval,
-            # и CASE(interval, timestamp) падает на prepare
-            retry_at = cast(now, DateTime) + func.make_interval(
+            # cast(now, DateTime(timezone=True)) фиксирует тип параметра
+            # как timestamptz: без него Postgres выводит для
+            # "$now + interval" тип interval, и CASE(interval, timestamp)
+            # падает на prepare
+            retry_at = cast(now, DateTime(timezone=True)) + func.make_interval(
                 0, 0, 0, 0, 0, 0, backoff_seconds
             )
             exhausted = attempt >= max_attempts
