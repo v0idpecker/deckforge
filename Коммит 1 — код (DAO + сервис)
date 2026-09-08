@@ -1,2 +1,0 @@
-git add src/deckforge/db/dao/decks.py src/deckforge/services/decks/decktask.py
-git commit -m "refactored retry transitions to atomic updates"

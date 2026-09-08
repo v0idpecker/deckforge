@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from typing import List
 from uuid import UUID
@@ -124,32 +124,18 @@ class DeckTaskService:
             except DAOError as e:
                 raise ServiceError(str(e)) from e
 
-    async def mark_for_retry_or_fail(self, task_id: UUID, error: Exception):
-        def backoff(
-            attempt: int, base_delay: float = 1.0, max_delay: float = 32.0
-        ) -> timedelta:
-            calculated_delay = base_delay * (2**attempt)
-            capped_delay = min(calculated_delay, max_delay)
-            return timedelta(seconds=capped_delay)
-
+    async def mark_for_retry_or_fail(
+        self, task_id: UUID, error: Exception
+    ) -> tuple[str, int] | None:
         try:
-            task = await self.get_task(task_id)
-
-            if task.status in {"DONE", "PARTIALLY_DONE", "FAILED"}:
-                return
-
-            if task.attempt_count < MAX_ATTEMPTS:
-                task.attempt_count += 1
-                task.error = str(error)
-                task.next_retry_at = datetime.now() + backoff(
-                    attempt=task.attempt_count
+            async with self._sessionmaker() as session, session.begin():
+                return await self._decktask_dao.schedule_retry_or_fail(
+                    session,
+                    task_id=task_id,
+                    now=datetime.now(),
+                    error=str(error),
+                    max_attempts=MAX_ATTEMPTS,
                 )
-                task.status = "RETRY_SCHEDULED"
-            else:
-                task.error = str(error)
-                task.status = "FAILED"
-
-            await self.update_task(task)
         except DAOError as e:
             raise ServiceError(str(e)) from e
 
@@ -173,13 +159,21 @@ class DeckTaskService:
             except DAOError as e:
                 raise DataAccessError(str(e)) from e
 
-    async def reschedule_for_retry(self, task_id: UUID):
+    async def reschedule_for_retry(self, task_id: UUID) -> bool:
         async with self._sessionmaker() as session, session.begin():
-            await self.update_task_status(task_id, "PENDING")
-            event = OutboxEventCreateDTO(
-                payload={"task_id": str(task_id)}, event_type="deck_task_requested"
-            )
-            await self._outbox_event_dao.create(event, session)
+            try:
+                claimed = await self._decktask_dao.claim_for_reschedule(
+                    task_id, session
+                )
+                if not claimed:
+                    return False
+                event = OutboxEventCreateDTO(
+                    payload={"task_id": str(task_id)}, event_type="deck_task_requested"
+                )
+                await self._outbox_event_dao.create(event, session)
+                return True
+            except DAOError as e:
+                raise ServiceError(str(e)) from e
 
     async def complete_task(self, task_id: UUID, status: str):
         async with self._sessionmaker() as session, session.begin():

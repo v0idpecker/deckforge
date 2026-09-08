@@ -2,7 +2,7 @@ import datetime
 from typing import List
 from uuid import UUID
 
-from sqlalchemy import delete
+from sqlalchemy import case, delete, func
 from sqlalchemy.exc import (
     DataError,
     IntegrityError,
@@ -115,9 +115,82 @@ class DeckTaskDAO:
             stmt = (
                 update(DeckTask)
                 .where(DeckTask.id == new_task.id)
-                .values(**new_task.__dict__)
+                .values(
+                    status=new_task.status,
+                    current_stage=new_task.current_stage,
+                    completed_items=new_task.completed_items,
+                    failed_items=new_task.failed_items,
+                    attempt_count=new_task.attempt_count,
+                    next_retry_at=new_task.next_retry_at,
+                    error=new_task.error,
+                )
             )
             await session.execute(stmt)
+        except SQLAlchemyError as e:
+            raise DAOError(f"Unexpected database error: {e}")
+
+    async def schedule_retry_or_fail(
+        self,
+        session: AsyncSession,
+        task_id: UUID,
+        now: datetime.datetime,
+        error: str,
+        max_attempts: int,
+    ) -> tuple[str, int] | None:
+        """Атомарный переход в RETRY_SCHEDULED/FAILED одним UPDATE.
+
+        Пока attempt_count < max_attempts — инкремент, RETRY_SCHEDULED и
+        next_retry_at = now + min(2**attempt, 32) секунд. Когда попытки
+        исчерпаны — FAILED без роста attempt_count (next_retry_at и
+        attempt_count не меняются). Guard исключает финальные статусы.
+        """
+        try:
+            attempt = DeckTask.attempt_count
+            new_attempt = attempt + 1
+            backoff_seconds = func.least(func.pow(2, new_attempt), 32)
+            exhausted = attempt >= max_attempts
+            stmt = (
+                update(DeckTask)
+                .where(
+                    DeckTask.id == task_id,
+                    DeckTask.status.not_in(("DONE", "PARTIALLY_DONE", "FAILED")),
+                )
+                .values(
+                    attempt_count=case((exhausted, attempt), else_=new_attempt),
+                    status=case(
+                        (exhausted, "FAILED"),
+                        else_="RETRY_SCHEDULED",
+                    ),
+                    next_retry_at=case(
+                        (exhausted, DeckTask.next_retry_at),
+                        else_=now + func.make_interval(
+                            0, 0, 0, 0, 0, 0, backoff_seconds
+                        ),
+                    ),
+                    error=error,
+                )
+                .returning(DeckTask.status, DeckTask.attempt_count)
+            )
+            res = await session.execute(stmt)
+            row = res.one_or_none()
+            if row is None:
+                return None
+            return row.status, row.attempt_count
+        except SQLAlchemyError as e:
+            raise DAOError(f"Unexpected database error: {e}")
+
+    async def claim_for_reschedule(self, task_id: UUID, session: AsyncSession) -> bool:
+        try:
+            stmt = (
+                update(DeckTask)
+                .where(DeckTask.id == task_id, DeckTask.status == "RETRY_SCHEDULED")
+                .values(status="PENDING")
+                .returning(DeckTask.id)
+            )
+            res = await session.execute(stmt)
+            claimed_task_id = res.scalar_one_or_none()
+
+            return claimed_task_id is not None
         except SQLAlchemyError as e:
             raise DAOError(f"Unexpected database error: {e}")
 
