@@ -16,9 +16,13 @@ from deckforge.scheduler.service import RetryScheduler
 pytestmark = pytest.mark.asyncio
 
 class FixedDateTime(datetime.datetime):
-    """Deterministic clock used instead of datetime.now() in retry logic."""
+    """Deterministic aware-UTC clock used instead of datetime.now(timezone.utc)."""
 
-    current = datetime.datetime(2025, 6, 1, 12, 0, 0)
+    current = datetime.datetime(2025, 6, 1, 12, 0, 0, tzinfo=datetime.timezone.utc)
+
+    def __new__(cls, *args, **kwargs):
+        kwargs.setdefault("tzinfo", datetime.timezone.utc)
+        return super().__new__(cls, *args, **kwargs)
 
     @classmethod
     def now(cls, tz=None):
@@ -30,11 +34,14 @@ class FixedDateTime(datetime.datetime):
             cls.current.minute,
             cls.current.second,
             cls.current.microsecond,
+            tzinfo=cls.current.tzinfo,
         )
 
-def freeze_time(monkeypatch):
-    FixedDateTime.current = datetime.datetime(2025, 6, 1, 12, 0, 0)
-    monkeypatch.setattr("deckforge.services.decks.decktask.datetime", FixedDateTime)
+def freeze_time(monkeypatch, decktask_service):
+    FixedDateTime.current = datetime.datetime(
+        2025, 6, 1, 12, 0, 0, tzinfo=datetime.timezone.utc
+    )
+    monkeypatch.setattr(decktask_service, "_clock", FixedDateTime.now)
 
 def advance_time(**kwargs):
     FixedDateTime.current = FixedDateTime.current + datetime.timedelta(**kwargs)
@@ -56,7 +63,7 @@ async def test_first_error_schedules_retry(
     test_user: UserDTO,
     monkeypatch,
 ):
-    freeze_time(monkeypatch)
+    freeze_time(monkeypatch, decktask_service)
 
     task = make_task(status="PROCESSING", user_id=test_user.id)
     db_session.add(task)
@@ -80,7 +87,7 @@ async def test_backoff_grows_exponentially(
     test_user: UserDTO,
     monkeypatch,
 ):
-    freeze_time(monkeypatch)
+    freeze_time(monkeypatch, decktask_service)
 
     task = make_task(status="PROCESSING", user_id=test_user.id)
     db_session.add(task)
@@ -103,7 +110,7 @@ async def test_task_fails_after_max_attempts(
     test_user: UserDTO,
     monkeypatch,
 ):
-    freeze_time(monkeypatch)
+    freeze_time(monkeypatch, decktask_service)
 
     task = make_task(status="PROCESSING", user_id=test_user.id)
     db_session.add(task)
@@ -149,7 +156,7 @@ async def test_find_ready_for_retry_returns_only_due_tasks(
     test_user: UserDTO,
     monkeypatch,
 ):
-    freeze_time(monkeypatch)
+    freeze_time(monkeypatch, decktask_service)
     now = FixedDateTime(2025, 6, 1, 12, 0, 0)
 
     due = make_task(
@@ -199,7 +206,7 @@ async def test_concurrent_mark_for_retry_increments_attempt_count(
     test_user: UserDTO,
     monkeypatch,
 ):
-    freeze_time(monkeypatch)
+    freeze_time(monkeypatch, decktask_service)
 
     task = make_task(status="PROCESSING", user_id=test_user.id)
     db_session.add(task)
@@ -225,7 +232,7 @@ async def test_concurrent_mark_for_retry_fails_exactly_once_after_max_attempts(
     test_user: UserDTO,
     monkeypatch,
 ):
-    freeze_time(monkeypatch)
+    freeze_time(monkeypatch, decktask_service)
 
     task = make_task(
         status="RETRY_SCHEDULED",
@@ -257,7 +264,7 @@ async def test_concurrent_reschedule_creates_single_outbox_event(
     test_user: UserDTO,
     monkeypatch,
 ):
-    freeze_time(monkeypatch)
+    freeze_time(monkeypatch, decktask_service)
     now = FixedDateTime(2025, 6, 1, 12, 0, 0)
 
     task = make_task(
@@ -291,11 +298,12 @@ async def test_concurrent_reschedule_creates_single_outbox_event(
 @allure.story("Scheduler")
 async def test_tick_requeues_due_task_and_creates_single_event(
     scheduler: RetryScheduler,
+    decktask_service,
     db_session: AsyncSession,
     test_user: UserDTO,
     monkeypatch,
 ):
-    freeze_time(monkeypatch)
+    freeze_time(monkeypatch, decktask_service)
     now = FixedDateTime(2025, 6, 1, 12, 0, 0)
 
     task = make_task(
@@ -323,11 +331,12 @@ async def test_tick_requeues_due_task_and_creates_single_event(
 @allure.story("Scheduler")
 async def test_tick_is_idempotent_for_requeued_task(
     scheduler: RetryScheduler,
+    decktask_service,
     db_session: AsyncSession,
     test_user: UserDTO,
     monkeypatch,
 ):
-    freeze_time(monkeypatch)
+    freeze_time(monkeypatch, decktask_service)
     now = FixedDateTime(2025, 6, 1, 12, 0, 0)
 
     task = make_task(
@@ -355,10 +364,8 @@ async def test_failed_task_is_not_requeued(
     scheduler: RetryScheduler,
     db_session: AsyncSession,
     test_user: UserDTO,
-    monkeypatch,
 ):
-    freeze_time(monkeypatch)
-    now = FixedDateTime(2025, 6, 1, 12, 0, 0)
+    now = datetime.datetime.now(datetime.timezone.utc)
 
     task = make_task(
         status="FAILED",
@@ -388,7 +395,7 @@ async def test_pipeline_failure_schedules_retry(
     fake_context_generator,
     monkeypatch,
 ):
-    freeze_time(monkeypatch)
+    freeze_time(monkeypatch, decktask_service)
 
     task = make_task(
         status="PENDING",
@@ -425,13 +432,14 @@ async def test_pipeline_failure_schedules_retry(
 @allure.story("Retry lifecycle")
 async def test_retry_reprocesses_error_items(
     scheduler: RetryScheduler,
+    decktask_service,
     pipeline: DeckPipeline,
     db_session: AsyncSession,
     test_user: UserDTO,
     fake_context_generator,
     monkeypatch,
 ):
-    freeze_time(monkeypatch)
+    freeze_time(monkeypatch, decktask_service)
     now = FixedDateTime(2025, 6, 1, 12, 0, 0)
 
     task = make_task(
@@ -472,7 +480,7 @@ async def test_full_retry_cycle_failure_then_success(
     fake_anki,
     monkeypatch,
 ):
-    freeze_time(monkeypatch)
+    freeze_time(monkeypatch, decktask_service)
 
     task = make_task(
         status="PENDING",
@@ -529,7 +537,9 @@ async def test_successful_run_resets_retry_counters(
         status="PENDING",
         user_id=test_user.id,
         attempt_count=2,
-        next_retry_at=datetime.datetime(2025, 1, 1, 12, 0, 0),
+        next_retry_at=datetime.datetime(
+            2025, 1, 1, 12, 0, 0, tzinfo=datetime.timezone.utc
+        ),
         error="previous error",
         options={
             "limit": 1,
@@ -564,7 +574,9 @@ async def test_stale_processing_task_is_requeued_by_tick(
     db_session: AsyncSession,
     test_user: UserDTO,
 ):
-    stale_updated_at = datetime.datetime.now() - datetime.timedelta(minutes=5)
+    stale_updated_at = datetime.datetime.now(
+        datetime.timezone.utc
+    ) - datetime.timedelta(minutes=5)
 
     task = make_task(
         status="PROCESSING",
@@ -596,7 +608,9 @@ async def test_fresh_processing_task_is_not_touched_by_tick(
     db_session: AsyncSession,
     test_user: UserDTO,
 ):
-    fresh_updated_at = datetime.datetime.now() - datetime.timedelta(seconds=2)
+    fresh_updated_at = datetime.datetime.now(
+        datetime.timezone.utc
+    ) - datetime.timedelta(seconds=2)
 
     task = make_task(
         status="PROCESSING",
@@ -625,7 +639,9 @@ async def test_stale_task_fails_after_max_attempts(
     db_session: AsyncSession,
     test_user: UserDTO,
 ):
-    stale_updated_at = datetime.datetime.now() - datetime.timedelta(minutes=5)
+    stale_updated_at = datetime.datetime.now(
+        datetime.timezone.utc
+    ) - datetime.timedelta(minutes=5)
 
     task = make_task(
         status="PROCESSING",

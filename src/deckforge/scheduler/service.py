@@ -38,7 +38,7 @@ class RetryScheduler:
         await self._requeue_stale_tasks()
 
     async def _requeue_stale_tasks(self):
-        now = datetime.datetime.now()
+        now = datetime.datetime.now(datetime.timezone.utc)
         # Ловкий порог: минимально возможный дедлайн (для задач с 1 item),
         # чтобы не выбирать лишние PROCESSING-задачи.
         loose_cutoff = now - timedelta(seconds=self._task_timeout_base)

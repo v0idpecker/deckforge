@@ -1,4 +1,5 @@
-from datetime import datetime
+from collections.abc import Callable
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import List
 from uuid import UUID
@@ -28,6 +29,9 @@ from deckforge.services.errors import (
 
 MAX_ATTEMPTS = 3
 
+def utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
 class DeckTaskService:
     def __init__(
         self,
@@ -35,11 +39,13 @@ class DeckTaskService:
         deckitem_dao: DeckItemDAO,
         decktask_dao: DeckTaskDAO,
         outbox_event_dao: OutboxEventDAO,
+        clock: Callable[[], datetime] | None = None,
     ):
         self._sessionmaker = sessionmaker
         self._deckitem_dao = deckitem_dao
         self._decktask_dao = decktask_dao
         self._outbox_event_dao = outbox_event_dao
+        self._clock = clock or utc_now
 
     @staticmethod
     def derive_deck_name(options: dict) -> str:
@@ -132,7 +138,7 @@ class DeckTaskService:
                 return await self._decktask_dao.schedule_retry_or_fail(
                     session,
                     task_id=task_id,
-                    now=datetime.now(),
+                    now=self._clock(),
                     error=str(error),
                     max_attempts=MAX_ATTEMPTS,
                 )
@@ -143,7 +149,7 @@ class DeckTaskService:
         async with self._sessionmaker() as session, session.begin():
             try:
                 return await self._decktask_dao.get_tasks_ready_for_retry(
-                    session, datetime.now()
+                    session, self._clock()
                 )
             except DAOError as e:
                 raise ServiceError(str(e)) from e
@@ -179,7 +185,7 @@ class DeckTaskService:
         try:
             async with self._sessionmaker() as session, session.begin():
                 tasks = await self._decktask_dao.get_tasks_ready_for_retry(
-                    session, datetime.now()
+                    session, self._clock()
                 )
                 rescheduled: List[UUID] = []
                 for task in tasks:

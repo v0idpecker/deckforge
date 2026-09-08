@@ -7,12 +7,11 @@ from sqlalchemy.orm.base import Mapped
 from sqlalchemy.sql.sqltypes import JSON, TEXT, UUID, DateTime, Enum
 
 from deckforge.db.models.base import Base
-
+from deckforge.db.models.decks import utc_now
 
 class EventStatus(enum.Enum):
     NEW = "new"
     SENT = "sent"
-
 
 class OutboxEvent(Base):
     __tablename__ = "outbox_events"
@@ -26,5 +25,5 @@ class OutboxEvent(Base):
         Enum(EventStatus), nullable=False, default=EventStatus.NEW
     )
     created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime, nullable=False, default=datetime.datetime.now
+        DateTime(timezone=True), nullable=False, default=utc_now
     )

@@ -9,6 +9,8 @@ from sqlalchemy.sql.sqltypes import INT, JSON, TEXT, UUID, DateTime
 from deckforge.db.models.base import Base
 from deckforge.db.models.user import User
 
+def utc_now() -> datetime.datetime:
+    return datetime.datetime.now(datetime.timezone.utc)
 
 class DeckTask(Base):
     __tablename__ = "deck_tasks"
@@ -24,21 +26,22 @@ class DeckTask(Base):
     options: Mapped[dict] = mapped_column(JSON, nullable=False)
     error: Mapped[str] = mapped_column(TEXT, nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime, nullable=False, default=datetime.datetime.now
+        DateTime(timezone=True), nullable=False, default=utc_now
     )
     updated_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime,
+        DateTime(timezone=True),
         nullable=False,
-        default=datetime.datetime.now,
-        onupdate=datetime.datetime.now,
+        default=utc_now,
+        onupdate=utc_now,
     )
     attempt_count: Mapped[int] = mapped_column(INT, nullable=False, default=0)
-    next_retry_at: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=True)
+    next_retry_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
     deck_items: Mapped[List["DeckItem"]] = relationship(back_populates="deck_task")
     deck_cards: Mapped[List["DeckCard"]] = relationship(back_populates="deck_task")
     user: Mapped["User"] = relationship(back_populates="tasks")
-
 
 class DeckItem(Base):
     __tablename__ = "deck_items"
@@ -55,17 +58,16 @@ class DeckItem(Base):
     translation: Mapped[str] = mapped_column(TEXT, nullable=True)
     error: Mapped[str] = mapped_column(TEXT, nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime, nullable=False, default=datetime.datetime.now
+        DateTime(timezone=True), nullable=False, default=utc_now
     )
     updated_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime,
+        DateTime(timezone=True),
         nullable=False,
-        default=datetime.datetime.now,
-        onupdate=datetime.datetime.now,
+        default=utc_now,
+        onupdate=utc_now,
     )
     deck_task: Mapped["DeckTask"] = relationship(back_populates="deck_items")
     deck_cards: Mapped[List["DeckCard"]] = relationship(back_populates="deck_item")
-
 
 class DeckCard(Base):
     __tablename__ = "deck_cards"
@@ -80,7 +82,7 @@ class DeckCard(Base):
     translation: Mapped[str] = mapped_column(TEXT, nullable=False)
     position: Mapped[int] = mapped_column(INT, nullable=False)
     created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime, nullable=False, default=datetime.datetime.now
+        DateTime(timezone=True), nullable=False, default=utc_now
     )
     deck_task: Mapped["DeckTask"] = relationship(back_populates="deck_cards")
     deck_item: Mapped["DeckItem"] = relationship(back_populates="deck_cards")
