@@ -24,7 +24,6 @@ from deckforge.dto.deck_card import DeckCardCreateDTO, DeckCardDTO
 from deckforge.dto.deck_item import DeckItemCreateDTO, DeckItemDTO
 from deckforge.dto.deck_task import DeckTaskCreateDTO, DeckTaskDTO
 
-
 class DeckTaskDAO:
     async def list(self, session: AsyncSession) -> List[DeckTaskDTO]:
         try:
@@ -137,6 +136,21 @@ class DeckTaskDAO:
         except SQLAlchemyError as e:
             raise DAOError(f"Unexpected database error: {e}")
 
+    async def get_stale_processing_tasks(
+        self, session: AsyncSession, older_than: datetime.datetime
+    ) -> List[DeckTaskDTO]:
+        try:
+            stmt = select(DeckTask).where(
+                DeckTask.status == "PROCESSING",
+                DeckTask.updated_at <= older_than,
+            )
+            res = await session.execute(stmt)
+            tasks = res.scalars().all()
+
+            return [DeckTaskDTO.from_entity(task) for task in tasks]
+        except SQLAlchemyError as e:
+            raise DAOError(f"Unexpected database error: {e}")
+
     async def complete(self, session: AsyncSession, id: UUID, status: str) -> None:
         try:
             stmt = (
@@ -152,7 +166,6 @@ class DeckTaskDAO:
             await session.execute(stmt)
         except SQLAlchemyError as e:
             raise DAOError(f"Unexpected database error: {e}")
-
 
 class DeckItemDAO:
     async def list(self, session: AsyncSession) -> List[DeckItemDTO]:
@@ -255,7 +268,6 @@ class DeckItemDAO:
             await session.execute(stmt)
         except SQLAlchemyError as e:
             raise DAOError(f"Unexpected database error: {e}")
-
 
 class DeckCardDAO:
     async def list(self, session: AsyncSession) -> List[DeckCardDTO]:
