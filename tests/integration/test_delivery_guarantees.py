@@ -137,6 +137,6 @@ async def test_worker_keeps_task_status_when_retry_marking_fails(
 
     assert fake_task_service.retried == []
 
-    await db_session.expire_all()
+    db_session.expire_all()
     task = await decktask_service.get_task(task_id)
     assert task.status == "PROCESSING"
