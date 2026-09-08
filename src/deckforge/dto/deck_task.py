@@ -4,7 +4,6 @@ from dataclasses import dataclass
 
 from deckforge.db.models.decks import DeckTask
 
-
 @dataclass
 class DeckTaskDTO:
     id: uuid.UUID
@@ -18,6 +17,7 @@ class DeckTaskDTO:
     user_id: uuid.UUID | None
     attempt_count: int
     next_retry_at: datetime.datetime
+    updated_at: datetime.datetime
 
     @classmethod
     def from_entity(cls, entity: DeckTask) -> "DeckTaskDTO":
@@ -33,8 +33,8 @@ class DeckTaskDTO:
             user_id=entity.user_id,
             attempt_count=entity.attempt_count,
             next_retry_at=entity.next_retry_at,
+            updated_at=entity.updated_at,
         )
-
 
 @dataclass
 class DeckTaskCreateDTO:
