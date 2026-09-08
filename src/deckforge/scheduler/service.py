@@ -3,12 +3,15 @@ import logging
 from datetime import timedelta
 
 from dishka import Provider, Scope, provide
+from dishka.provider import from_context
 from sqlalchemy.ext.asyncio.session import AsyncSession, async_sessionmaker
 
+from deckforge.config import Config
 from deckforge.db.dao.outbox import OutboxEventDAO
 from deckforge.services.decks.decktask import DeckTaskService
 
 logger = logging.getLogger(__name__)
+
 
 class RetryScheduler:
     def __init__(
@@ -68,14 +71,17 @@ class RetryScheduler:
             except Exception:
                 logger.exception("Failed to requeue stale task %s", task.id)
 
+
 class SchedulerProvider(Provider):
+    config = from_context(Config, scope=Scope.APP)
+
     @provide(scope=Scope.REQUEST)
     async def scheduler(
         self,
         decktask_service: DeckTaskService,
         sessionmaker: async_sessionmaker[AsyncSession],
         outbox_dao: OutboxEventDAO,
-        config,
+        config: Config,
     ) -> RetryScheduler:
         return RetryScheduler(
             decktask_service,

@@ -13,7 +13,6 @@ from deckforge.db.errors import (
 from deckforge.db.models.outbox import EventStatus, OutboxEvent
 from deckforge.dto.outbox_event import OutboxEventCreateDTO, OutboxEventDTO
 
-
 class OutboxEventDAO:
     async def list(self, session: AsyncSession) -> List[OutboxEventDTO]:
         try:
@@ -63,6 +62,7 @@ class OutboxEventDAO:
                 .where(OutboxEvent.status == EventStatus.NEW)
                 .order_by(OutboxEvent.created_at)
                 .limit(limit)
+                .with_for_update(skip_locked=True)
             )
             res = await session.execute(stmt)
             values = res.scalars().all()

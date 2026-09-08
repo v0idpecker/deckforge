@@ -12,10 +12,9 @@ from deckforge.adapters.errors import ExternalServiceError
 from deckforge.db.models.decks import DeckCard, DeckItem, DeckTask
 from deckforge.dto.user import UserDTO
 from deckforge.pipeline.deck_pipeline import DeckPipeline
-from deckforge.services.errors import NotFoundError
+from deckforge.services.errors import NotFoundError, ServiceError
 
 pytestmark = pytest.mark.asyncio
-
 
 @allure.feature("Deck pipeline")
 @allure.story("Task lifecycle")
@@ -61,7 +60,6 @@ async def test_pipeline_turns_pending_task_into_done(
     assert not new_item.sentence
     assert not new_item.translation
 
-
 @allure.feature("Deck pipeline")
 @allure.story("Task lifecycle")
 async def test_task_with_done_status_is_not_processing_again(
@@ -102,7 +100,6 @@ async def test_task_with_done_status_is_not_processing_again(
     assert not new_item.sentence
     assert not new_item.translation
 
-
 @allure.feature("Deck pipeline")
 @allure.story("Task lifecycle")
 async def test_task_with_partually_done_status_is_not_processing_again(
@@ -142,7 +139,6 @@ async def test_task_with_partually_done_status_is_not_processing_again(
     assert not new_item.normalized_word
     assert not new_item.sentence
     assert not new_item.translation
-
 
 @allure.feature("Deck pipeline")
 @allure.story("Word normalization")
@@ -190,7 +186,6 @@ async def test_normalization_fills_in_normalized_word(
     assert new_item.status == "DONE"
     assert new_task.status == "DONE"
     assert fake_normalizer.calls == ["Dogs"]
-
 
 @allure.feature("Deck pipeline")
 @allure.story("Context generation")
@@ -263,7 +258,6 @@ async def test_context_generation_creates_deck_cards(
         }
     ]
 
-
 @allure.feature("Deck pipeline")
 @allure.story("Context generation")
 async def test_deck_cards_count_matches_limit_per_word(
@@ -325,7 +319,6 @@ async def test_deck_cards_count_matches_limit_per_word(
         assert sorted(card.position for card in item_cards) == list(range(limit))
         assert {card.word for card in item_cards} == {item.raw_word}
 
-
 @allure.feature("Deck pipeline")
 @allure.story("Context generation")
 async def test_context_generator_uses_normalized_word(
@@ -384,7 +377,6 @@ async def test_context_generator_uses_normalized_word(
     assert new_cards[0].sentence == "dogs sentence"
     assert new_cards[0].translation == "dogs translation"
 
-
 @allure.feature("Deck pipeline")
 @allure.story("Batch item processing")
 async def test_several_items_are_being_processed(
@@ -437,7 +429,6 @@ async def test_several_items_are_being_processed(
     assert len(fake_anki.export_calls) == 1
     assert len(fake_anki.export_calls[-1][2]) == 3
 
-
 @allure.feature("Deck pipeline")
 @allure.story("Error handling")
 async def test_external_service_error_marks_item_error_and_propagates(
@@ -489,7 +480,145 @@ async def test_external_service_error_marks_item_error_and_propagates(
     assert task.status == "PROCESSING"
     assert cat.status == "DONE"
     assert broken.status == "ERROR"
+    assert broken.error == "context service failed"
 
+@allure.feature("Deck pipeline")
+@allure.story("Error handling")
+async def test_service_error_fails_item_and_completes_task_partially_done(
+    pipeline: DeckPipeline,
+    db_session: AsyncSession,
+    test_user: UserDTO,
+    fake_context_generator,
+    fake_anki,
+):
+    task = DeckTask(
+        status="PENDING",
+        current_stage="NONE",
+        total_items=2,
+        options={
+            "limit": 1,
+            "sentence_lang": "english",
+            "translation_lang": "russian",
+        },
+        user_id=test_user.id,
+    )
+
+    db_session.add(task)
+    await db_session.flush()
+    item = DeckItem(status="PENDING", stage="NONE", raw_word="cat", task_id=task.id)
+    broken_item = DeckItem(
+        status="PENDING", stage="NONE", raw_word="broken", task_id=task.id
+    )
+    db_session.add_all([item, broken_item])
+    await db_session.commit()
+
+    async def failing_get_context_sentence(
+        word, limit, sentence_lang, translation_lang, difficulty
+    ):
+        fake_context_generator.calls.append(
+            {
+                "word": word,
+                "limit": limit,
+                "sentence_lang": sentence_lang,
+                "translation_lang": translation_lang,
+                "difficulty": difficulty,
+            }
+        )
+        if word == "broken":
+            raise ServiceError("upstream service failed")
+        return [
+            {
+                sentence_lang: f"{word} sentence",
+                translation_lang: f"{word} translation",
+            }
+            for _ in range(limit)
+        ]
+
+    fake_context_generator.get_context_sentence = failing_get_context_sentence
+
+    await pipeline.run(task.id)
+
+    db_session.expire_all()
+    await db_session.refresh(task)
+    await db_session.refresh(item)
+    await db_session.refresh(broken_item)
+
+    cat = (
+        await db_session.execute(select(DeckItem).where(DeckItem.id == item.id))
+    ).scalar_one()
+    broken = (
+        await db_session.execute(select(DeckItem).where(DeckItem.id == broken_item.id))
+    ).scalar_one()
+
+    assert cat.status == "DONE"
+    assert broken.status == "ERROR"
+    assert broken.error == "upstream service failed"
+    assert task.status == "PARTIALLY_DONE"
+    assert len(fake_anki.export_calls) == 1
+
+@allure.feature("Deck pipeline")
+@allure.story("Error handling")
+async def test_unexpected_exception_fails_item_but_does_not_crash_pipeline(
+    pipeline: DeckPipeline,
+    db_session: AsyncSession,
+    test_user: UserDTO,
+    fake_context_generator,
+):
+    task = DeckTask(
+        status="PENDING",
+        current_stage="NONE",
+        total_items=2,
+        options={
+            "limit": 1,
+            "sentence_lang": "english",
+            "translation_lang": "russian",
+        },
+        user_id=test_user.id,
+    )
+
+    db_session.add(task)
+    await db_session.flush()
+    item = DeckItem(status="PENDING", stage="NONE", raw_word="cat", task_id=task.id)
+    broken_item = DeckItem(
+        status="PENDING", stage="NONE", raw_word="broken", task_id=task.id
+    )
+    db_session.add_all([item, broken_item])
+    await db_session.commit()
+
+    async def crashing_get_context_sentence(
+        word, limit, sentence_lang, translation_lang, difficulty
+    ):
+        if word == "broken":
+            raise RuntimeError("boom")
+        return [
+            {
+                sentence_lang: f"{word} sentence",
+                translation_lang: f"{word} translation",
+            }
+            for _ in range(limit)
+        ]
+
+    fake_context_generator.get_context_sentence = crashing_get_context_sentence
+
+    # процесс не падает, исключение поглощается item'ом
+    await pipeline.run(task.id)
+
+    db_session.expire_all()
+    await db_session.refresh(task)
+    await db_session.refresh(item)
+    await db_session.refresh(broken_item)
+
+    cat = (
+        await db_session.execute(select(DeckItem).where(DeckItem.id == item.id))
+    ).scalar_one()
+    broken = (
+        await db_session.execute(select(DeckItem).where(DeckItem.id == broken_item.id))
+    ).scalar_one()
+
+    assert cat.status == "DONE"
+    assert broken.status == "ERROR"
+    assert broken.error == "boom"
+    assert task.status == "PARTIALLY_DONE"
 
 @allure.feature("Deck pipeline")
 @allure.story("Anki export")
@@ -545,7 +674,6 @@ async def test_processed_task_creates_apkg_file(
     finally:
         deck_path.unlink(missing_ok=True)
 
-
 @allure.feature("Deck pipeline")
 @allure.story("Anki export")
 async def test_task_without_cards_does_not_export(
@@ -579,7 +707,6 @@ async def test_task_without_cards_does_not_export(
         assert not deck_path.exists()
     finally:
         deck_path.unlink(missing_ok=True)
-
 
 @allure.feature("Deck pipeline")
 @allure.story("Anki export")
@@ -633,7 +760,6 @@ async def test_failed_item_skips_export(
 
     assert fake_anki.export_calls == []
 
-
 @allure.feature("Deck pipeline")
 @allure.story("Task lookup")
 async def test_missing_task_id_raises_not_found_error(pipeline: DeckPipeline):
@@ -641,7 +767,6 @@ async def test_missing_task_id_raises_not_found_error(pipeline: DeckPipeline):
 
     with pytest.raises(NotFoundError):
         await pipeline.run(missing_id)
-
 
 async def test_only_one_worker_can_claim_pending_task(
     decktask_service,
@@ -671,7 +796,6 @@ async def test_only_one_worker_can_claim_pending_task(
 
     await db_session.refresh(task)
     assert task.status == "PROCESSING"
-
 
 async def test_only_one_concurrent_pipeline_run_processes_task(
     pipeline: DeckPipeline,
