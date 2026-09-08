@@ -68,6 +68,12 @@ async def test_concurrent_ticks_create_single_outbox_event_per_task(
     )
     await db_session.commit()
 
+    events_before = {
+        e.id
+        for e in await outbox_dao.list(db_session)
+        if e.payload.get("task_id") == str(task_id)
+    }
+
     scheduler_a = RetryScheduler(
         decktask_service,
         sessionmaker,
@@ -86,8 +92,12 @@ async def test_concurrent_ticks_create_single_outbox_event_per_task(
     await asyncio.gather(scheduler_a.tick(), scheduler_b.tick())
 
     events = await outbox_dao.list(db_session)
-    task_events = [e for e in events if e.payload.get("task_id") == str(task_id)]
-    assert len(task_events) == 1
+    new_task_events = [
+        e
+        for e in events
+        if e.id not in events_before and e.payload.get("task_id") == str(task_id)
+    ]
+    assert len(new_task_events) == 1
 
     task = await decktask_service.get_task(task_id)
     assert task.status == "PENDING"
