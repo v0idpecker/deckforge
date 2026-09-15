@@ -78,6 +78,7 @@ class DeckCard(Base):
     task_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("deck_tasks.id"))
     item_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("deck_items.id"))
     word: Mapped[str] = mapped_column(TEXT, nullable=False)
+    target_word_form: Mapped[str | None] = mapped_column(TEXT, nullable=True)
     sentence: Mapped[str] = mapped_column(TEXT, nullable=False)
     translation: Mapped[str] = mapped_column(TEXT, nullable=False)
     position: Mapped[int] = mapped_column(INT, nullable=False)

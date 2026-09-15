@@ -10,6 +10,7 @@ class DeckCardDTO:
     task_id: uuid.UUID
     item_id: uuid.UUID
     word: str
+    target_word_form: str | None
     sentence: str
     translation: str
     position: int
@@ -21,6 +22,7 @@ class DeckCardDTO:
             task_id=entity.task_id,
             item_id=entity.item_id,
             word=entity.word,
+            target_word_form=entity.target_word_form,
             sentence=entity.sentence,
             translation=entity.translation,
             position=entity.position,
@@ -35,3 +37,4 @@ class DeckCardCreateDTO:
     sentence: str
     translation: str
     position: int
+    target_word_form: str | None = None
