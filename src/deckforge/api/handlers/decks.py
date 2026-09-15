@@ -37,7 +37,7 @@ async def create_task(
     service: FromDishka[DeckTaskService],
     current_user: Annotated[UserDTO, Depends(get_current_user)],
 ) -> DeckTaskCreateResponse:
-    task_dto = DeckTaskCreateDTO(**task.model_dump())
+    task_dto = DeckTaskCreateDTO(words=task.words, options=task.options.model_dump())
     task_id = await service.create_task(task_dto, current_user.id)
     return DeckTaskCreateResponse(task_id=task_id)
 
@@ -130,6 +130,7 @@ async def get_cards(
                 word=card.word,
                 sentence=card.sentence,
                 translation=card.translation,
+                target_word_form=card.target_word_form,
             )
         )
 
@@ -138,5 +139,6 @@ async def get_cards(
     return DeckCardsResponse(
         task_id=task_id,
         suggested_deck_name=deck_name,
+        card_format=task.options.get("card_format", "basic"),
         cards=cards_for_response,
     )
