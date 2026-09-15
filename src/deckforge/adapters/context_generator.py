@@ -157,7 +157,8 @@ class ContextGenerator:
                 "degrading to sentences without word form",
                 word,
             )
-            return self._sanitize_forms(last_parsed)
+            if last_parsed:
+                return self._sanitize_forms(last_parsed)
         raise ExternalServiceError(
             f"LLM failed to return a valid response for word '{word}' "
             f"(limit={limit}, difficulty={difficulty}) after 2 attempts"
@@ -165,7 +166,9 @@ class ContextGenerator:
 
     @staticmethod
     def _has_valid_structure(parsed, limit: int) -> bool:
-        return isinstance(parsed, TranslationResponse) and len(parsed.sentences) == limit
+        return (
+            isinstance(parsed, TranslationResponse) and len(parsed.sentences) == limit
+        )
 
     @staticmethod
     def normalize_form(form: str) -> str:

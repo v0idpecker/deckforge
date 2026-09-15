@@ -9,8 +9,8 @@ const MODEL_CSS = `.card {
   font-family: Arial, sans-serif;
   font-size: 22px;
   text-align: center;
-  color: #1a1c1e;
-  background-color: #f3f5f7;
+  color: #2a1e17;
+  background-color: #faf4ee;
   padding: 24px;
 }
 .sentence {
@@ -20,20 +20,20 @@ const MODEL_CSS = `.card {
 }
 .target-word {
   font-weight: 700;
-  color: #0d9488;
+  color: #f84919;
 }
 .translation {
-  color: #555;
+  color: #8a776c;
 }
 .nightMode .card {
-  color: #e4e6e8;
-  background-color: #1a1c1e;
+  color: #f5ede8;
+  background-color: #181210;
 }
 .nightMode .translation {
-  color: #a8abae;
+  color: #a3948c;
 }
 .nightMode .target-word {
-  color: #2dd4bf;
+  color: #f77019;
 }`;
 
 interface AnkiResponse<T> {

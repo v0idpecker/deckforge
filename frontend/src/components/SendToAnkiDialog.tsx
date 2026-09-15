@@ -324,7 +324,7 @@ export function SendToAnkiDialog({ open, taskId, onClose }: Props) {
                   px: 1.25,
                   py: 0.75,
                   borderRadius: 1,
-                  backgroundColor: "#f3f4f6",
+                  backgroundColor: "action.hover",
                   overflow: "hidden",
                   textOverflow: "ellipsis",
                   whiteSpace: "nowrap",

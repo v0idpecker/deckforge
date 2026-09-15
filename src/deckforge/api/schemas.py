@@ -1,10 +1,12 @@
 import uuid
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class DeckTaskOptions(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     normalization: bool = False
     limit: int = Field(default=1, ge=1, le=5)
     sentence_lang: Literal["english", "german", "spanish", "french", "italian"] = "english"
