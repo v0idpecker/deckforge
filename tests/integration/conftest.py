@@ -311,6 +311,7 @@ class FakeContextGenerator:
             {
                 sentence_lang: f"{word} sentence",
                 translation_lang: f"{word} translation",
+                "target_word_form": word,
             }
             for _ in range(limit)
         ]
