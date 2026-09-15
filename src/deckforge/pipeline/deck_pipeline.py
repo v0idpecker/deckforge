@@ -3,6 +3,7 @@ import logging
 from uuid import UUID
 
 from deckforge.adapters.anki import AnkiAdapter
+from deckforge.adapters.context_generator import TARGET_WORD_FORM_KEY
 from deckforge.adapters.errors import ExternalServiceError
 from deckforge.adapters.normalizer import Normalizer
 from deckforge.dto.deck_card import DeckCardCreateDTO
@@ -143,6 +144,7 @@ class DeckPipeline:
                 task.id,
                 self._decktask_service.derive_deck_name(task.options),
                 cards,
+                task.options,
             )
         except (ServiceError, OSError) as e:
             logger.error(
@@ -197,6 +199,7 @@ class DeckPipeline:
                     sentence=ex[sentence_lang],
                     translation=ex[translation_lang],
                     position=i,
+                    target_word_form=ex.get(TARGET_WORD_FORM_KEY) or None,
                 )
             )
 

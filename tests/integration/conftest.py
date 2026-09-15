@@ -342,8 +342,8 @@ class FakeAnki:
     def __init__(self):
         self.export_calls = []
 
-    def export_deck(self, task_id, deck_name, cards):
-        self.export_calls.append((task_id, deck_name, cards))
+    def export_deck(self, task_id, deck_name, cards, options=None):
+        self.export_calls.append((task_id, deck_name, cards, options))
 
 # фейк OpenAI-клиента: последовательность ответов на chat.completions.parse
 

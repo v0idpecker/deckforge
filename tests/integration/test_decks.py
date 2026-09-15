@@ -521,7 +521,7 @@ async def test_pipeline_partial_failure_with_cards_exports_and_completes(
     assert updated_task.status == "PARTIALLY_DONE"
 
     assert len(fake_anki.export_calls) == 1
-    exported_task_id, _, exported_cards = fake_anki.export_calls[0]
+    exported_task_id, _, exported_cards, _ = fake_anki.export_calls[0]
     assert exported_task_id == task_id
     assert [card.word for card in exported_cards] == ["cat"]
 

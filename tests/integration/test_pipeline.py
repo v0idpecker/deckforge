@@ -242,7 +242,7 @@ async def test_context_generation_creates_deck_cards(
     assert new_item.status == "DONE"
     assert new_task.status == "DONE"
     assert len(fake_anki.export_calls) == 1
-    task_id, deck_name, exported_cards = fake_anki.export_calls[0]
+    task_id, deck_name, exported_cards, _ = fake_anki.export_calls[0]
     assert task_id == task.id
     assert deck_name == "DeckForge::english→russian"
     assert len(exported_cards) == 1
@@ -638,6 +638,7 @@ async def test_processed_task_creates_apkg_file(
         fake_normalizer,
         fake_context_generator,
         AnkiAdapter(),
+        concurrency=4,
     )
     task = DeckTask(
         status="PENDING",
