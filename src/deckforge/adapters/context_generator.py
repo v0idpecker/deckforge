@@ -1,3 +1,4 @@
+import logging
 from typing import List
 
 from openai import APIError, AsyncOpenAI
@@ -10,6 +11,8 @@ from pydantic import BaseModel
 
 from deckforge.adapters.errors import ExternalServiceError
 
+logger = logging.getLogger(__name__)
+
 SYSTEM_PROMPT = """Ты — генератор учебных примеров для карточек Anki.
 По заданному слову генерируешь указанное количество примеров предложений
 на языке {source_lang} с переводом на {target_lang}.
@@ -21,12 +24,15 @@ SYSTEM_PROMPT = """Ты — генератор учебных примеров �
 2. Целевое слово естественно встроено (допустимы формы: время, число, падеж, степени сравнения — в зависимости от {source_lang}).
 3. Уровень сложности — {difficulty}.
 4. Перевод на {target_lang} литературный, не подстрочный.
+5. В поле target_word_form укажи точную форму целевого слова, как она стоит в предложении: слово целиком, без знаков препинания и лишних пробелов.
 
 Пример формата:
-{{"word": "...", "sentences": [{{"sentence": "...", "translation": "..."}}]}}
+{{"word": "...", "sentences": [{{"sentence": "...", "translation": "...", "target_word_form": "..."}}]}}
 """
 
-PROMPT_VERSION = 1
+PROMPT_VERSION = 2
+
+TARGET_WORD_FORM_KEY = "target_word_form"
 
 
 def build_system_prompt(source_lang: str, target_lang: str, difficulty: str):
@@ -39,9 +45,13 @@ def build_user_prompt(word: str, limit: int):
     return f'Слово: "{word}"\nКоличество предложений: {limit}\nВерни json строго по описанной схеме.'
 
 
+FORM_STRIP_CHARS = " \t\n\r.,!?;:\"'«»„“”()"
+
+
 class SentenceItem(BaseModel):
     sentence: str
     translation: str
+    target_word_form: str
 
 
 class TranslationResponse(BaseModel):
@@ -69,6 +79,7 @@ class ContextGenerator:
             {
                 sentence_lang: item.sentence,
                 translation_lang: item.translation,
+                TARGET_WORD_FORM_KEY: item.target_word_form,
             }
             for item in items.sentences
         ]
@@ -89,6 +100,7 @@ class ContextGenerator:
             role="user", content=build_user_prompt(word, limit)
         )
         messages = [system_msg, user_msg]
+        last_parsed = None
         for attempt in range(2):
             try:
                 response = await self._client.chat.completions.parse(
@@ -122,6 +134,7 @@ class ContextGenerator:
                 await self.validate_response(parsed, limit)
                 return parsed
             except ValueError as err:
+                last_parsed = parsed
                 messages.append(
                     ChatCompletionAssistantMessageParam(
                         role="assistant", content=content
@@ -138,10 +151,37 @@ class ContextGenerator:
                     )
                 )
                 continue
+        if self._has_valid_structure(last_parsed, limit):
+            logger.warning(
+                "LLM failed to return valid target_word_form for word '%s', "
+                "degrading to sentences without word form",
+                word,
+            )
+            return self._sanitize_forms(last_parsed)
         raise ExternalServiceError(
             f"LLM failed to return a valid response for word '{word}' "
             f"(limit={limit}, difficulty={difficulty}) after 2 attempts"
         )
+
+    @staticmethod
+    def _has_valid_structure(parsed, limit: int) -> bool:
+        return isinstance(parsed, TranslationResponse) and len(parsed.sentences) == limit
+
+    @staticmethod
+    def normalize_form(form: str) -> str:
+        return form.strip(FORM_STRIP_CHARS)
+
+    @classmethod
+    def _is_valid_form(cls, sentence: str, form: str) -> bool:
+        normalized = cls.normalize_form(form)
+        return bool(normalized) and normalized.lower() in sentence.lower()
+
+    @classmethod
+    def _sanitize_forms(cls, parsed: TranslationResponse) -> TranslationResponse:
+        for item in parsed.sentences:
+            if not cls._is_valid_form(item.sentence, item.target_word_form):
+                item.target_word_form = ""
+        return parsed
 
     async def validate_response(self, parsed, limit: int):
         if not isinstance(parsed, TranslationResponse):
@@ -149,4 +189,15 @@ class ContextGenerator:
         if len(parsed.sentences) != limit:
             raise ValueError(
                 f"Ты не вернул нужное кол-во предложений: {len(parsed.sentences)} вместо {limit}"
+            )
+        invalid_indices = [
+            i
+            for i, item in enumerate(parsed.sentences)
+            if not self._is_valid_form(item.sentence, item.target_word_form)
+        ]
+        if invalid_indices:
+            raise ValueError(
+                "В поле target_word_form укажи точную форму целевого слова, "
+                "как она стоит в sentence, без знаков препинания. "
+                f"Форма не найдена в предложении для индексов: {invalid_indices}"
             )
