@@ -8,6 +8,7 @@ import {
   Container,
   FormControl,
   FormControlLabel,
+  FormLabel,
   InputLabel,
   LinearProgress,
   MenuItem,
@@ -18,6 +19,8 @@ import {
   SvgIcon,
   Switch,
   TextField,
+  ToggleButton,
+  ToggleButtonGroup,
   Typography,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
@@ -30,6 +33,7 @@ import {
 } from "../api/decks";
 import { SendToAnkiDialog } from "../components/SendToAnkiDialog";
 import type {
+  CardFormat,
   DeckTaskHistoryItem,
   DeckItemStageValue,
   DeckItemStatusValue,
@@ -283,6 +287,8 @@ function AppPage() {
     "russian" | "english" | "german" | "spanish" | "french"
   >("russian");
   const [difficulty, setDifficulty] = useState<DifficultyLevel>("B1");
+  const [cardFormat, setCardFormat] = useState<CardFormat>("basic");
+  const [addReverse, setAddReverse] = useState(false);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -371,6 +377,8 @@ function AppPage() {
           sentence_lang: sentenceLang,
           translation_lang: translationLang,
           difficulty,
+          card_format: cardFormat,
+          add_reverse: addReverse,
         },
       });
 
@@ -733,6 +741,39 @@ function AppPage() {
                         ))}
                       </Select>
                     </FormControl>
+
+                    <FormControl>
+                      <FormLabel id="card-format-label" sx={{ typography: "body2" }}>
+                        Card format
+                      </FormLabel>
+                      <ToggleButtonGroup
+                        exclusive
+                        aria-labelledby="card-format-label"
+                        size="small"
+                        value={cardFormat}
+                        onChange={(_, value: CardFormat | null) => {
+                          if (value) {
+                            setCardFormat(value);
+                          }
+                        }}
+                      >
+                        <ToggleButton value="basic">Basic</ToggleButton>
+                        <ToggleButton value="cloze">Cloze</ToggleButton>
+                      </ToggleButtonGroup>
+                    </FormControl>
+
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={addReverse && cardFormat === "basic"}
+                          disabled={cardFormat === "cloze"}
+                          onChange={(event) =>
+                            setAddReverse(event.target.checked)
+                          }
+                        />
+                      }
+                      label="Add reverse cards"
+                    />
                   </Stack>
                 </Paper>
 

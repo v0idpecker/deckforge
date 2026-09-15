@@ -22,7 +22,7 @@ import {
 import { getDeckCards } from "../api/decks";
 import { DestinationStep, CREATE_NEW_OPTION } from "./DestinationStep";
 import { ReviewStep } from "./ReviewStep";
-import type { DeckCard, EditableCard } from "../types/decks";
+import type { CardFormat, DeckCard, EditableCard } from "../types/decks";
 
 type DialogState =
   | "loading"
@@ -80,6 +80,7 @@ function toEditableCards(cards: DeckCard[]): EditableCard[] {
     selected: true,
     sentence: card.sentence,
     translation: card.translation,
+    targetWordForm: card.target_word_form,
   }));
 }
 
@@ -89,6 +90,7 @@ export function SendToAnkiDialog({ open, taskId, onClose }: Props) {
   const [decks, setDecks] = useState<string[]>([]);
   const [editableCards, setEditableCards] = useState<EditableCard[]>([]);
   const [suggestedDeckName, setSuggestedDeckName] = useState("");
+  const [cardFormat, setCardFormat] = useState<CardFormat>("basic");
   const [selectedDeck, setSelectedDeck] = useState<string | null>(null);
   const [creatingNew, setCreatingNew] = useState(false);
   const [newDeckName, setNewDeckName] = useState("");
@@ -141,12 +143,13 @@ export function SendToAnkiDialog({ open, taskId, onClose }: Props) {
         setDecks(deckNames);
         setEditableCards(toEditableCards(cardsResponse.cards));
         setSuggestedDeckName(cardsResponse.suggested_deck_name);
+        setCardFormat(cardsResponse.card_format ?? "basic");
 
         // Единственная неидемпотентная операция держится отдельно от push-флоу:
         // её сбой не должен блокировать отправку (если модели реально нет,
         // addNotes вернёт понятную ошибку).
         try {
-          await ensureDeckForgeModel();
+          await ensureDeckForgeModel(cardsResponse.card_format ?? "basic");
         } catch {
           // ignore — non-blocking by design
         }
@@ -201,9 +204,18 @@ export function SendToAnkiDialog({ open, taskId, onClose }: Props) {
     >,
   ) => {
     setEditableCards((prev) =>
-      prev.map((card) =>
-        card.card.id === id ? { ...card, ...patch } : card,
-      ),
+      prev.map((card) => {
+        if (card.card.id !== id) {
+          return card;
+        }
+        const next = { ...card, ...patch };
+        if (patch.sentence !== undefined && patch.sentence !== card.sentence) {
+          // Редактирование ломает соответствие form ↔ sentence — выделение
+          // для этой карточки больше не гарантирует корректность.
+          next.targetWordForm = null;
+        }
+        return next;
+      }),
     );
   };
 
@@ -226,7 +238,7 @@ export function SendToAnkiDialog({ open, taskId, onClose }: Props) {
     setErrorMsg(null);
 
     try {
-      const { sent, skipped } = await pushCardsToAnki(deckName, cardsToSend);
+      const { sent, skipped } = await pushCardsToAnki(deckName, cardsToSend, cardFormat);
       setResult({ deckName, sent, skipped });
       setState(skipped === 0 ? "success" : "partial");
     } catch (cause) {

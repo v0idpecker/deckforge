@@ -1,6 +1,40 @@
 const ANKI_BASE_URL = "http://127.0.0.1:8765";
 
-const MODEL_NAME = "DeckForge Basic";
+import type { CardFormat } from "../types/decks";
+
+const BASIC_MODEL_NAME = "DeckForge Context";
+const CLOZE_MODEL_NAME = "DeckForge Cloze";
+
+const MODEL_CSS = `.card {
+  font-family: Arial, sans-serif;
+  font-size: 22px;
+  text-align: center;
+  color: #1a1c1e;
+  background-color: #f3f5f7;
+  padding: 24px;
+}
+.sentence {
+  font-size: 26px;
+  line-height: 1.4;
+  margin-bottom: 16px;
+}
+.target-word {
+  font-weight: 700;
+  color: #0d9488;
+}
+.translation {
+  color: #555;
+}
+.nightMode .card {
+  color: #e4e6e8;
+  background-color: #1a1c1e;
+}
+.nightMode .translation {
+  color: #a8abae;
+}
+.nightMode .target-word {
+  color: #2dd4bf;
+}`;
 
 interface AnkiResponse<T> {
   result: T | null;
@@ -87,46 +121,98 @@ export async function listAnkiDecks(): Promise<string[]> {
 }
 
 /**
- * Идемпотентно гарантирует наличие модели «DeckForge Basic» (поля
- * Sentence/Translation, шаблон как в genanki). createModel не идемпотентен
- * (падает, если модель уже есть), поэтому сначала проверяем modelNames.
+ * Идемпотентно гарантирует наличие модели для выбранного формата карточек
+ * («DeckForge Context» — basic, «DeckForge Cloze» — cloze). createModel не
+ * идемпотентен (падает, если модель уже есть), поэтому сначала проверяем
+ * modelNames. Имена и шаблоны зеркалят genanki-модели бэкенда.
  */
-export async function ensureDeckForgeModel(): Promise<void> {
+export async function ensureDeckForgeModel(cardFormat: CardFormat): Promise<void> {
   const modelNames = await ankiRequest<string[]>("modelNames");
 
-  if (modelNames.includes(MODEL_NAME)) {
+  if (cardFormat === "cloze") {
+    if (modelNames.includes(CLOZE_MODEL_NAME)) {
+      return;
+    }
+    await ankiRequest<void>("createModel", {
+      modelName: CLOZE_MODEL_NAME,
+      inOrderFields: ["Sentence", "Translation"],
+      css: MODEL_CSS,
+      isCloze: true,
+      cardTemplates: [
+        {
+          Name: "Cloze",
+          Front: '<div class="sentence">{{cloze:Sentence}}</div>',
+          Back: '{{cloze:Sentence}}<hr id="answer"><div class="translation">{{Translation}}</div>',
+        },
+      ],
+    });
+    return;
+  }
+
+  if (modelNames.includes(BASIC_MODEL_NAME)) {
     return;
   }
 
   await ankiRequest<void>("createModel", {
-    modelName: MODEL_NAME,
+    modelName: BASIC_MODEL_NAME,
     inOrderFields: ["Sentence", "Translation"],
-    css: "",
+    css: MODEL_CSS,
     isCloze: false,
     cardTemplates: [
       {
         Name: "Card 1",
-        Front: "{{Sentence}}",
-        Back: '{{FrontSide}}<hr id="answer">{{Translation}}',
+        Front: '<div class="sentence">{{Sentence}}</div>',
+        Back: '{{FrontSide}}<hr id="answer"><div class="translation">{{Translation}}</div>',
       },
     ],
   });
+}
+
+export function escapeHtml(text: string): string {
+  return text
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
+/**
+ * TS-зеркало highlight_sentence бэкенда: экранирование обеих строк,
+ * первое вхождение формы case-insensitive, оригинальный регистр сохраняется.
+ */
+export function highlightSentence(sentence: string, form: string | null): string {
+  const escaped = escapeHtml(sentence);
+  if (!form || form.trim() === "") {
+    return escaped;
+  }
+  const escapedForm = escapeHtml(form.trim());
+  if (escapedForm === "") {
+    return escaped;
+  }
+  const pattern = new RegExp(escapedForm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+  const match = escaped.match(pattern);
+  if (!match || match.index === undefined) {
+    return escaped;
+  }
+  const wrapped = `<span class="target-word">${match[0]}</span>`;
+  return escaped.slice(0, match.index) + wrapped + escaped.slice(match.index + match[0].length);
 }
 
 /**
  * Отправляет отобранные карточки одним батчем addNotes.
  * Принимает только то, что реально нужно AnkiConnect — пары текст/перевод:
  * отредактированные карточки больше не являются DeckCard в строгом смысле.
+ * cardFormat определяет, к какой модели привязываются заметки.
  * result — массив id добавленных заметок (number) или null (не добавлена,
  * обычно точный дубликат по первому полю).
  */
 export async function pushCardsToAnki(
   deckName: string,
   cards: Array<{ sentence: string; translation: string }>,
+  cardFormat: CardFormat = "basic",
 ): Promise<{ sent: number; skipped: number }> {
   const notes = cards.map((card) => ({
     deckName,
-    modelName: MODEL_NAME,
+    modelName: cardFormat === "cloze" ? CLOZE_MODEL_NAME : BASIC_MODEL_NAME,
     fields: { Sentence: card.sentence, Translation: card.translation },
     tags: ["deckforge"],
     options: { allowDuplicate: false },

@@ -127,6 +127,7 @@ export async function getDeckCards(taskId: string): Promise<DeckCardsResponse> {
   const payload = rawResponse as {
     task_id: string;
     suggested_deck_name: string;
+    card_format?: unknown;
     cards: unknown[];
   };
 
@@ -141,7 +142,10 @@ export async function getDeckCards(taskId: string): Promise<DeckCardsResponse> {
       !("sentence" in card) ||
       typeof card.sentence !== "string" ||
       !("translation" in card) ||
-      typeof card.translation !== "string"
+      typeof card.translation !== "string" ||
+      ("target_word_form" in card &&
+        card.target_word_form !== null &&
+        typeof card.target_word_form !== "string")
     ) {
       throw new ApiError("Invalid deck cards response format", 500);
     }
@@ -151,12 +155,17 @@ export async function getDeckCards(taskId: string): Promise<DeckCardsResponse> {
       word: card.word,
       sentence: card.sentence,
       translation: card.translation,
+      target_word_form:
+        "target_word_form" in card && typeof card.target_word_form === "string"
+          ? card.target_word_form
+          : null,
     };
   });
 
   return {
     task_id: payload.task_id,
     suggested_deck_name: payload.suggested_deck_name,
+    card_format: payload.card_format === "cloze" ? "cloze" : "basic",
     cards,
   };
 }

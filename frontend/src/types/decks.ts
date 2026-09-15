@@ -15,6 +15,8 @@ export type DeckItemStageValue =
 
 export type DifficultyLevel = "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
 
+export type CardFormat = "basic" | "cloze";
+
 export type DeckTaskCreateRequest = {
   words: string[];
   options: {
@@ -23,6 +25,8 @@ export type DeckTaskCreateRequest = {
     sentence_lang: "english" | "german" | "spanish" | "french" | "italian";
     translation_lang: "russian" | "english" | "german" | "spanish" | "french";
     difficulty: DifficultyLevel;
+    card_format: CardFormat;
+    add_reverse: boolean;
   };
 };
 
@@ -52,11 +56,13 @@ export type DeckCard = {
   word: string;
   sentence: string;
   translation: string;
+  target_word_form: string | null;
 };
 
 export type DeckCardsResponse = {
   task_id: string;
   suggested_deck_name: string;
+  card_format: CardFormat;
   cards: DeckCard[];
 };
 
@@ -65,4 +71,6 @@ export type EditableCard = {
   selected: boolean;
   sentence: string;
   translation: string;
+  /** Исходная форма слова от LLM; сбрасывается при редактировании предложения. */
+  targetWordForm: string | null;
 };
