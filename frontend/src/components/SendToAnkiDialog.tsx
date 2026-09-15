@@ -96,6 +96,7 @@ export function SendToAnkiDialog({ open, taskId, onClose }: Props) {
   const [newDeckName, setNewDeckName] = useState("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [result, setResult] = useState<ResultInfo | null>(null);
+  const [modelWarning, setModelWarning] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [copied, setCopied] = useState(false);
 
@@ -119,6 +120,7 @@ export function SendToAnkiDialog({ open, taskId, onClose }: Props) {
       setNewDeckName("");
       setErrorMsg(null);
       setResult(null);
+      setModelWarning(null);
 
       try {
         const alive = await ankiPing();
@@ -146,12 +148,15 @@ export function SendToAnkiDialog({ open, taskId, onClose }: Props) {
         setCardFormat(cardsResponse.card_format ?? "basic");
 
         // Единственная неидемпотентная операция держится отдельно от push-флоу:
-        // её сбой не должен блокировать отправку (если модели реально нет,
-        // addNotes вернёт понятную ошибку).
+        // её сбой не блокирует отправку (pushCardsToAnki повторно гарантирует
+        // модель), но показывается предупреждением — молча пропускать провал
+        // нельзя: пользователь должен видеть причину будущей ошибки.
         try {
           await ensureDeckForgeModel(cardsResponse.card_format ?? "basic");
-        } catch {
-          // ignore — non-blocking by design
+        } catch (cause) {
+          setModelWarning(
+            cause instanceof Error ? cause.message : "Unknown error",
+          );
         }
         if (cancelled) {
           return;
@@ -187,6 +192,8 @@ export function SendToAnkiDialog({ open, taskId, onClose }: Props) {
         .map((card) => ({
           sentence: card.sentence,
           translation: card.translation,
+          word: card.card.word,
+          targetWordForm: card.targetWordForm,
         })),
     [editableCards],
   );
@@ -362,11 +369,19 @@ export function SendToAnkiDialog({ open, taskId, onClose }: Props) {
 
       case "ready":
         return step === 0 ? (
-          <ReviewStep
-            cards={editableCards}
-            onCardChange={handleCardChange}
-            onCardRemove={handleCardRemove}
-          />
+          <Stack spacing={1.5}>
+            {modelWarning && (
+              <Alert severity="warning">
+                Could not verify the Anki note type — sending may fail:{" "}
+                {modelWarning}
+              </Alert>
+            )}
+            <ReviewStep
+              cards={editableCards}
+              onCardChange={handleCardChange}
+              onCardRemove={handleCardRemove}
+            />
+          </Stack>
         ) : (
           <DestinationStep
             decks={decks}

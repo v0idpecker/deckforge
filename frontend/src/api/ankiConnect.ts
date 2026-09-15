@@ -197,26 +197,102 @@ export function highlightSentence(sentence: string, form: string | null): string
   return escaped.slice(0, match.index) + wrapped + escaped.slice(match.index + match[0].length);
 }
 
+const FIRST_MATCH_ESCAPE = /[.*+?^${}()|[\]\\]/g;
+
+function wrapFirstOccurrence(
+  sentence: string,
+  candidate: string,
+  wrap: (matched: string) => string,
+): string | null {
+  const escaped = escapeHtml(sentence);
+  const escapedCandidate = escapeHtml(candidate.trim());
+  if (escapedCandidate === "") {
+    return null;
+  }
+  const pattern = new RegExp(escapedCandidate.replace(FIRST_MATCH_ESCAPE, "\\$&"), "i");
+  const match = escaped.match(pattern);
+  if (!match || match.index === undefined) {
+    return null;
+  }
+  return escaped.slice(0, match.index) + wrap(match[0]) + escaped.slice(match.index + match[0].length);
+}
+
+/**
+ * Cloze-разметка для AnkiConnect-отправки. Anki отклоняет cloze-заметку без
+ * единого {{c1::...}}, поэтому у карточек без валидной формы (LLM-деградация,
+ * ручное редактирование) используется fallback-цепочка: форма слова → само
+ * слово карточки → всё предложение целиком.
+ */
+export function clozeSentence(
+  sentence: string,
+  form: string | null,
+  word: string,
+): string {
+  const candidates = [form, word, sentence];
+  for (const candidate of candidates) {
+    if (!candidate || candidate.trim() === "") {
+      continue;
+    }
+    const wrapped = wrapFirstOccurrence(
+      sentence,
+      candidate,
+      (matched) => `{{c1::${matched}}}`,
+    );
+    if (wrapped !== null) {
+      return wrapped;
+    }
+  }
+  return escapeHtml(sentence);
+}
+
 /**
  * Отправляет отобранные карточки одним батчем addNotes.
- * Принимает только то, что реально нужно AnkiConnect — пары текст/перевод:
- * отредактированные карточки больше не являются DeckCard в строгом смысле.
- * cardFormat определяет, к какой модели привязываются заметки.
+ * Принимает исходный (неэкранированный, без разметки) текст карточек и
+ * подготавливает поля по формату: basic — подсветка слова, cloze —
+ * {{c1::...}} с fallback-цепочкой form → word → sentence.
  * result — массив id добавленных заметок (number) или null (не добавлена,
  * обычно точный дубликат по первому полю).
  */
 export async function pushCardsToAnki(
   deckName: string,
-  cards: Array<{ sentence: string; translation: string }>,
+  cards: Array<{
+    sentence: string;
+    translation: string;
+    word: string;
+    targetWordForm: string | null;
+  }>,
   cardFormat: CardFormat = "basic",
 ): Promise<{ sent: number; skipped: number }> {
-  const notes = cards.map((card) => ({
-    deckName,
-    modelName: cardFormat === "cloze" ? CLOZE_MODEL_NAME : BASIC_MODEL_NAME,
-    fields: { Sentence: card.sentence, Translation: card.translation },
-    tags: ["deckforge"],
-    options: { allowDuplicate: false },
-  }));
+  const modelName = cardFormat === "cloze" ? CLOZE_MODEL_NAME : BASIC_MODEL_NAME;
+
+  const modelNames = await ankiRequest<string[]>("modelNames");
+  if (!modelNames.includes(modelName)) {
+    await ensureDeckForgeModel(cardFormat);
+    const retryNames = await ankiRequest<string[]>("modelNames");
+    if (!retryNames.includes(modelName)) {
+      throw new AnkiConnectError(
+        `Note type "${modelName}" is missing in Anki and could not be created. ` +
+          "Create it manually via Tools → Manage Note Types and retry.",
+      );
+    }
+  }
+
+  const notes = cards.map((card) => {
+    const sentence =
+      cardFormat === "cloze"
+        ? clozeSentence(card.sentence, card.targetWordForm, card.word)
+        : highlightSentence(card.sentence, card.targetWordForm);
+    return {
+      deckName,
+      modelName,
+      fields: {
+        Sentence: sentence,
+        Translation: escapeHtml(card.translation),
+      },
+      tags: ["deckforge"],
+      options: { allowDuplicate: false },
+    };
+  });
 
   const result = await ankiRequest<(number | null)[]>("addNotes", { notes });
 
