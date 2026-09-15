@@ -91,7 +91,15 @@ async def test_create_deck_task_creates_task_with_correct_state(
     assert task.total_items == 1
     assert task.completed_items == 0
     assert task.failed_items == 0
-    assert task.options == {}
+    assert task.options == {
+        "normalization": False,
+        "limit": 1,
+        "sentence_lang": "english",
+        "translation_lang": "russian",
+        "difficulty": "B1",
+        "card_format": "basic",
+        "add_reverse": False,
+    }
     assert task.user_id == test_user.id
 
 
@@ -530,3 +538,126 @@ async def test_pipeline_partial_failure_with_cards_exports_and_completes(
     )
     cards = res_cards.scalars().all()
     assert {card.word for card in cards} == {"cat"}
+
+
+@allure.feature("Decks API")
+@allure.story("Options validation")
+@pytest.mark.parametrize(
+    "options",
+    [
+        {"limit": 0},
+        {"limit": 6},
+        {"sentence_lang": "klingon"},
+        {"translation_lang": "klingon"},
+        {"difficulty": "S1"},
+        {"card_format": "fancy"},
+        {"add_reverse": "maybe"},
+        {"unknown_option": True},
+        {"limit": "abc"},
+    ],
+)
+async def test_create_task_with_invalid_options_returns_422(
+    client: AsyncClient, options: dict
+):
+    response = await client.post(
+        url="/api/decks/", json={"words": ["cat"], "options": options}
+    )
+
+    assert response.status_code == 422
+
+
+@allure.feature("Decks API")
+@allure.story("Options validation")
+async def test_create_task_with_partial_options_fills_defaults(
+    client: AsyncClient, db_session: AsyncSession
+):
+    response = await client.post(
+        url="/api/decks/",
+        json={"words": ["cat"], "options": {"limit": 3, "card_format": "cloze"}},
+    )
+
+    assert response.status_code == 200
+
+    task_id = UUID(response.json()["task_id"])
+    res = await db_session.execute(select(DeckTask).where(DeckTask.id == task_id))
+    task = res.scalar_one()
+
+    assert task.options["limit"] == 3
+    assert task.options["card_format"] == "cloze"
+    assert task.options["add_reverse"] is False
+    assert task.options["sentence_lang"] == "english"
+
+
+@allure.feature("Decks API")
+@allure.story("Get deck cards")
+async def test_get_cards_returns_target_word_form_and_card_format(
+    client: AsyncClient, db_session: AsyncSession, test_user: UserDTO
+):
+    task = DeckTask(
+        status="DONE",
+        current_stage="NONE",
+        total_items=1,
+        options={"card_format": "cloze"},
+        user_id=test_user.id,
+    )
+    db_session.add(task)
+    await db_session.flush()
+    item = DeckItem(task_id=task.id, raw_word="cat", status="DONE", stage="DONE")
+    db_session.add(item)
+    await db_session.flush()
+    db_session.add(
+        DeckCard(
+            task_id=task.id,
+            item_id=item.id,
+            word="cat",
+            target_word_form="cat",
+            sentence="The cat sleeps.",
+            translation="Кот спит.",
+            position=0,
+        )
+    )
+    await db_session.commit()
+
+    response = await client.get(url=f"/api/decks/{task.id}/cards")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["card_format"] == "cloze"
+    assert data["cards"][0]["target_word_form"] == "cat"
+
+
+@allure.feature("Decks API")
+@allure.story("Get deck cards")
+async def test_get_cards_for_old_task_returns_null_target_word_form_and_basic_format(
+    client: AsyncClient, db_session: AsyncSession, test_user: UserDTO
+):
+    task = DeckTask(
+        status="DONE",
+        current_stage="NONE",
+        total_items=1,
+        options={"limit": 1, "sentence_lang": "english"},
+        user_id=test_user.id,
+    )
+    db_session.add(task)
+    await db_session.flush()
+    item = DeckItem(task_id=task.id, raw_word="cat", status="DONE", stage="DONE")
+    db_session.add(item)
+    await db_session.flush()
+    db_session.add(
+        DeckCard(
+            task_id=task.id,
+            item_id=item.id,
+            word="cat",
+            sentence="The cat sleeps.",
+            translation="Кот спит.",
+            position=0,
+        )
+    )
+    await db_session.commit()
+
+    response = await client.get(url=f"/api/decks/{task.id}/cards")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["card_format"] == "basic"
+    assert data["cards"][0]["target_word_form"] is None
