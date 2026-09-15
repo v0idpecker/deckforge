@@ -32,6 +32,10 @@ import {
   listDeckTasks,
 } from "../api/decks";
 import { SendToAnkiDialog } from "../components/SendToAnkiDialog";
+import { ThemeToggle } from "../components/ThemeToggle";
+import { useThemeMode } from "../app/ThemeModeContext";
+import type { ThemeMode } from "../app/theme";
+import logoUrl from "../assets/logo-dark.svg";
 import type {
   CardFormat,
   DeckTaskHistoryItem,
@@ -63,12 +67,18 @@ const TASK_STATUS_LABELS: Record<DeckTaskStatusValue, string> = {
   PARTIALLY_DONE: "Partial",
 };
 
-const TASK_STATUS_COLORS: Record<DeckTaskStatusValue, string> = {
-  PENDING: "#64748b",
-  PROCESSING: "#2563eb",
-  DONE: "#10b981",
-  PARTIALLY_DONE: "#f59e0b",
-};
+function taskStatusColor(status: DeckTaskStatusValue, mode: ThemeMode): string {
+  switch (status) {
+    case "PENDING":
+      return mode === "dark" ? "#A3948C" : "#8A776C";
+    case "PROCESSING":
+      return "#F84919";
+    case "DONE":
+      return "#10B981";
+    case "PARTIALLY_DONE":
+      return "#F79719";
+  }
+}
 
 const ITEM_STATUS_LABELS: Record<DeckItemStatusValue, string> = {
   PENDING: "Pending",
@@ -77,12 +87,18 @@ const ITEM_STATUS_LABELS: Record<DeckItemStatusValue, string> = {
   ERROR: "Failed",
 };
 
-const ITEM_STATUS_COLORS: Record<DeckItemStatusValue, string> = {
-  PENDING: "#94a3b8",
-  PROCESSING: "#2563eb",
-  DONE: "#10b981",
-  ERROR: "#e11d48",
-};
+function itemStatusColor(status: DeckItemStatusValue, mode: ThemeMode): string {
+  switch (status) {
+    case "PENDING":
+      return mode === "dark" ? "#A3948C" : "#8A776C";
+    case "PROCESSING":
+      return "#F84919";
+    case "DONE":
+      return "#10B981";
+    case "ERROR":
+      return "#F72219";
+  }
+}
 
 const SENTENCE_LANGUAGE_LABELS = {
   english: "English",
@@ -181,14 +197,6 @@ function getRowLabel(item: DeckTaskItemStatus): string {
   return ITEM_STATUS_LABELS[item.status];
 }
 
-function ForgeIcon() {
-  return (
-    <SvgIcon viewBox="0 0 24 24" sx={{ fontSize: 18 }}>
-      <path d="M13 2l-1.7 6H7.5a.5.5 0 0 0-.41.79l3.77 5.39L9 22l7.91-11.21A.5.5 0 0 0 16.5 10h-3.8L14 2h-1z" />
-    </SvgIcon>
-  );
-}
-
 function DownloadIcon() {
   return (
     <SvgIcon viewBox="0 0 24 24" sx={{ fontSize: 22 }}>
@@ -198,7 +206,8 @@ function DownloadIcon() {
 }
 
 function WordStatusCard({ item }: { item: DeckTaskItemStatus }) {
-  const color = ITEM_STATUS_COLORS[item.status];
+  const { mode } = useThemeMode();
+  const color = itemStatusColor(item.status, mode);
 
   return (
     <Stack
@@ -270,6 +279,7 @@ function CountTile({
 }
 
 function AppPage() {
+  const { mode } = useThemeMode();
   const [hasToken, setHasToken] = useState(false);
   const [viewState, setViewState] = useState<ViewState>("INPUT");
   const [wordsInput, setWordsInput] = useState("");
@@ -510,13 +520,17 @@ function AppPage() {
     return null;
   }
 
+  const pageBackground =
+    mode === "dark"
+      ? "radial-gradient(1000px 620px at 92% -12%, rgba(247, 34, 25, 0.12), transparent 60%), radial-gradient(900px 700px at -12% 112%, rgba(248, 73, 25, 0.10), transparent 60%)"
+      : "radial-gradient(1000px 620px at 92% -12%, rgba(247, 34, 25, 0.05), transparent 60%), radial-gradient(900px 700px at -12% 112%, rgba(248, 73, 25, 0.04), transparent 60%)";
+
   return (
     <Box
       sx={{
         minHeight: "100vh",
         py: { xs: 2, md: 4 },
-        background:
-          "radial-gradient(1000px 620px at 92% -12%, rgba(79, 70, 229, 0.06), transparent 60%), radial-gradient(900px 700px at -12% 112%, rgba(13, 148, 136, 0.05), transparent 60%)",
+        background: pageBackground,
       }}
     >
       <Container maxWidth="lg">
@@ -526,26 +540,22 @@ function AppPage() {
             justifyContent="space-between"
             alignItems="center"
           >
-            <Stack direction="row" spacing={1.5} alignItems="center">
-              <Box
-                sx={{
-                  width: 30,
-                  height: 30,
-                  borderRadius: 2,
-                  background:
-                    "linear-gradient(135deg, #0d9488, #4f46e5)",
-                  color: "#ffffff",
-                  display: "grid",
-                  placeItems: "center",
-                }}
-              >
-                <ForgeIcon />
-              </Box>
-              <Typography variant="h6">DeckForge</Typography>
+            <Box
+              component="img"
+              src={logoUrl}
+              alt="AnkiSlop"
+              sx={{
+                height: { xs: 36, md: 42 },
+                width: "auto",
+                filter: "drop-shadow(0 4px 20px rgba(248, 73, 25, 0.25))",
+              }}
+            />
+            <Stack direction="row" spacing={1} alignItems="center">
+              <ThemeToggle />
+              <Button variant="text" size="small" onClick={handleSignOut}>
+                Sign out
+              </Button>
             </Stack>
-            <Button variant="text" size="small" onClick={handleSignOut}>
-              Sign out
-            </Button>
           </Stack>
 
           {error && <Alert severity="error">{error}</Alert>}
@@ -780,8 +790,8 @@ function AppPage() {
                 <Paper
                   sx={{
                     p: { xs: 2.5, md: 3 },
-                    backgroundColor: alpha("#f59e0b", 0.04),
-                    borderColor: alpha("#f59e0b", 0.22),
+                    backgroundColor: alpha("#F79719", 0.06),
+                    borderColor: alpha("#F79719", 0.28),
                   }}
                 >
                   <Stack spacing={2}>
@@ -837,7 +847,7 @@ function AppPage() {
                       variant="h6"
                       sx={{
                         color: taskStatus
-                          ? TASK_STATUS_COLORS[taskStatus]
+                          ? taskStatusColor(taskStatus, mode)
                           : undefined,
                       }}
                     >
@@ -884,22 +894,22 @@ function AppPage() {
                     <CountTile
                       label="Done"
                       value={doneItems}
-                      color="#10b981"
+                      color={itemStatusColor("DONE", mode)}
                     />
                     <CountTile
                       label="Running"
                       value={processingItems}
-                      color="#2563eb"
+                      color={itemStatusColor("PROCESSING", mode)}
                     />
                     <CountTile
                       label="Queued"
                       value={pendingItems}
-                      color="#94a3b8"
+                      color={itemStatusColor("PENDING", mode)}
                     />
                     <CountTile
                       label="Failed"
                       value={errorItems}
-                      color="#e11d48"
+                      color={itemStatusColor("ERROR", mode)}
                     />
                   </Box>
                 </Stack>
@@ -957,8 +967,8 @@ function AppPage() {
                 sx={{
                   p: { xs: 3, md: 4 },
                   textAlign: "center",
-                  backgroundColor: alpha("#10b981", 0.03),
-                  borderColor: alpha("#10b981", 0.22),
+                  backgroundColor: alpha("#10B981", 0.06),
+                  borderColor: alpha("#10B981", 0.28),
                 }}
               >
                 <Stack spacing={2} alignItems="center">
@@ -1107,7 +1117,7 @@ function AppPage() {
                         <Typography
                           variant="body2"
                           sx={{
-                            color: TASK_STATUS_COLORS[task.status],
+                            color: taskStatusColor(task.status, mode),
                             fontWeight: 600,
                           }}
                         >
