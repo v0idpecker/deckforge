@@ -83,6 +83,30 @@ async def test_context_gen_service_hit_does_not_call_generator(
 
 
 @allure.feature("LLM cache")
+@allure.story("ContextGenerationService caching")
+async def test_old_prompt_version_entry_is_ignored(
+    context_gen_service,
+    fake_llm_generator,
+    llm_cache_service,
+):
+    stale_result = [{"english": "stale v1 sentence", "russian": "stale v1 translation"}]
+    stale_dto = build_create_dto("cat", stale_result)
+    stale_dto.prompt_version = PROMPT_VERSION - 1
+    await llm_cache_service.create(stale_dto)
+
+    result = await context_gen_service.get_context_sentence(
+        word="cat",
+        limit=2,
+        sentence_lang="english",
+        translation_lang="russian",
+        difficulty="B1",
+    )
+
+    assert fake_llm_generator.calls == 1
+    assert result != stale_result
+
+
+@allure.feature("LLM cache")
 @allure.story("LLMCacheDAO")
 async def test_cache_dao_create_twice_same_key_keeps_one_row_and_updates_result(
     llm_cache_dao,
