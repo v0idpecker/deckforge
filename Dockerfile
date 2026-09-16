@@ -26,4 +26,4 @@ RUN mkdir -p ${NLTK_DATA}/corpora \
     && rm -rf /tmp/nltk_data
 
 ENV PYTHONPATH=/app/src
-CMD ["sh", "-c", "alembic upgrade head && uvicorn deckforge.main:app --host 0.0.0.0 --port 8000"]
+CMD ["sh", "-c", "alembic upgrade head && uvicorn ankislop.main:app --host 0.0.0.0 --port 8000"]

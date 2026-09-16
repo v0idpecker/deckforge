@@ -6,9 +6,9 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from deckforge.adapters.errors import ExternalServiceError
-from deckforge.db.models.decks import DeckItem, DeckTask
-from deckforge.services.errors import ServiceError
+from ankislop.adapters.errors import ExternalServiceError
+from ankislop.db.models.decks import DeckItem, DeckTask
+from ankislop.services.errors import ServiceError
 
 pytestmark = pytest.mark.asyncio
 

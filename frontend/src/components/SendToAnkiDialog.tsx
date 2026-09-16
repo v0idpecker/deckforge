@@ -14,7 +14,7 @@ import {
 import {
   AnkiConnectError,
   ankiPing,
-  ensureDeckForgeModel,
+  ensureAnkiSlopModel,
   listAnkiDecks,
   probeAnkiReachable,
   pushCardsToAnki,
@@ -152,7 +152,7 @@ export function SendToAnkiDialog({ open, taskId, onClose }: Props) {
         // модель), но показывается предупреждением — молча пропускать провал
         // нельзя: пользователь должен видеть причину будущей ошибки.
         try {
-          await ensureDeckForgeModel(cardsResponse.card_format ?? "basic");
+          await ensureAnkiSlopModel(cardsResponse.card_format ?? "basic");
         } catch (cause) {
           setModelWarning(
             cause instanceof Error ? cause.message : "Unknown error",

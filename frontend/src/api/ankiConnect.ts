@@ -2,8 +2,8 @@ const ANKI_BASE_URL = "http://127.0.0.1:8765";
 
 import type { CardFormat } from "../types/decks";
 
-const BASIC_MODEL_NAME = "DeckForge Context";
-const CLOZE_MODEL_NAME = "DeckForge Cloze";
+const BASIC_MODEL_NAME = "AnkiSlop Context";
+const CLOZE_MODEL_NAME = "AnkiSlop Cloze";
 
 const MODEL_CSS = `.card {
   font-family: Arial, sans-serif;
@@ -122,11 +122,11 @@ export async function listAnkiDecks(): Promise<string[]> {
 
 /**
  * Идемпотентно гарантирует наличие модели для выбранного формата карточек
- * («DeckForge Context» — basic, «DeckForge Cloze» — cloze). createModel не
+ * («AnkiSlop Context» — basic, «AnkiSlop Cloze» — cloze). createModel не
  * идемпотентен (падает, если модель уже есть), поэтому сначала проверяем
  * modelNames. Имена и шаблоны зеркалят genanki-модели бэкенда.
  */
-export async function ensureDeckForgeModel(cardFormat: CardFormat): Promise<void> {
+export async function ensureAnkiSlopModel(cardFormat: CardFormat): Promise<void> {
   const modelNames = await ankiRequest<string[]>("modelNames");
 
   if (cardFormat === "cloze") {
@@ -267,7 +267,7 @@ export async function pushCardsToAnki(
 
   const modelNames = await ankiRequest<string[]>("modelNames");
   if (!modelNames.includes(modelName)) {
-    await ensureDeckForgeModel(cardFormat);
+    await ensureAnkiSlopModel(cardFormat);
     const retryNames = await ankiRequest<string[]>("modelNames");
     if (!retryNames.includes(modelName)) {
       throw new AnkiConnectError(
@@ -289,7 +289,7 @@ export async function pushCardsToAnki(
         Sentence: sentence,
         Translation: escapeHtml(card.translation),
       },
-      tags: ["deckforge"],
+      tags: ["ankislop"],
       options: { allowDuplicate: false },
     };
   });

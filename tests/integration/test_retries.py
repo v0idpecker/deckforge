@@ -6,12 +6,12 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from deckforge.adapters.errors import ExternalServiceError
-from deckforge.db.models.decks import DeckItem, DeckTask
-from deckforge.db.models.outbox import EventStatus, OutboxEvent
-from deckforge.dto.user import UserDTO
-from deckforge.pipeline.deck_pipeline import DeckPipeline
-from deckforge.scheduler.service import RetryScheduler
+from ankislop.adapters.errors import ExternalServiceError
+from ankislop.db.models.decks import DeckItem, DeckTask
+from ankislop.db.models.outbox import EventStatus, OutboxEvent
+from ankislop.dto.user import UserDTO
+from ankislop.pipeline.deck_pipeline import DeckPipeline
+from ankislop.scheduler.service import RetryScheduler
 
 pytestmark = pytest.mark.asyncio
 

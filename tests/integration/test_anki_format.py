@@ -4,7 +4,7 @@ import allure
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from deckforge.adapters.anki import (
+from ankislop.adapters.anki import (
     BASIC_MODEL_ID,
     CLOZE_MODEL_ID,
     AnkiAdapter,
@@ -14,9 +14,9 @@ from deckforge.adapters.anki import (
     escape_html,
     highlight_sentence,
 )
-from deckforge.db.models.decks import DeckCard, DeckItem, DeckTask
-from deckforge.dto.deck_card import DeckCardDTO
-from deckforge.dto.user import UserDTO
+from ankislop.db.models.decks import DeckCard, DeckItem, DeckTask
+from ankislop.dto.deck_card import DeckCardDTO
+from ankislop.dto.user import UserDTO
 
 pytestmark = pytest.mark.asyncio
 
@@ -148,7 +148,7 @@ async def test_export_deck_basic_creates_file_with_highlighted_cards(
 
     adapter = AnkiAdapter()
     path = adapter.export_deck(
-        task_id, "DeckForge::english→russian", cards, {"card_format": "basic"}
+        task_id, "AnkiSlop::english→russian", cards, {"card_format": "basic"}
     )
 
     try:
@@ -170,7 +170,7 @@ async def test_export_deck_cloze_creates_file(
 
     adapter = AnkiAdapter()
     adapter.export_deck(
-        task_id, "DeckForge::english→russian", cards, {"card_format": "cloze"}
+        task_id, "AnkiSlop::english→russian", cards, {"card_format": "cloze"}
     )
 
     try:

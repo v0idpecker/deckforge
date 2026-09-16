@@ -7,12 +7,12 @@ import pytest
 from sqlalchemy.ext.asyncio.session import AsyncSession
 from sqlalchemy.sql.expression import select
 
-from deckforge.adapters.anki import AnkiAdapter
-from deckforge.adapters.errors import ExternalServiceError
-from deckforge.db.models.decks import DeckCard, DeckItem, DeckTask
-from deckforge.dto.user import UserDTO
-from deckforge.pipeline.deck_pipeline import DeckPipeline
-from deckforge.services.errors import NotFoundError, ServiceError
+from ankislop.adapters.anki import AnkiAdapter
+from ankislop.adapters.errors import ExternalServiceError
+from ankislop.db.models.decks import DeckCard, DeckItem, DeckTask
+from ankislop.dto.user import UserDTO
+from ankislop.pipeline.deck_pipeline import DeckPipeline
+from ankislop.services.errors import NotFoundError, ServiceError
 
 pytestmark = pytest.mark.asyncio
 
@@ -244,7 +244,7 @@ async def test_context_generation_creates_deck_cards(
     assert len(fake_anki.export_calls) == 1
     task_id, deck_name, exported_cards, _ = fake_anki.export_calls[0]
     assert task_id == task.id
-    assert deck_name == "DeckForge::english→russian"
+    assert deck_name == "AnkiSlop::english→russian"
     assert len(exported_cards) == 1
     assert exported_cards[0].sentence == "cat sentence"
     assert exported_cards[0].translation == "cat translation"

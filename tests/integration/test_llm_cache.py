@@ -3,9 +3,9 @@ import pytest
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from deckforge.adapters.context_generator import PROMPT_VERSION
-from deckforge.db.models.llm_cache import LLMCache
-from deckforge.dto.llm_cache import LLMCacheCreateDTO, LLMCacheKeyDTO
+from ankislop.adapters.context_generator import PROMPT_VERSION
+from ankislop.db.models.llm_cache import LLMCache
+from ankislop.dto.llm_cache import LLMCacheCreateDTO, LLMCacheKeyDTO
 
 pytestmark = pytest.mark.asyncio
 

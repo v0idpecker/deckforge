@@ -2,13 +2,13 @@ import allure
 import pytest
 from types import SimpleNamespace
 
-from deckforge.adapters.context_generator import (
+from ankislop.adapters.context_generator import (
     PROMPT_VERSION,
     TARGET_WORD_FORM_KEY,
     SentenceItem,
     TranslationResponse,
 )
-from deckforge.adapters.errors import ExternalServiceError
+from ankislop.adapters.errors import ExternalServiceError
 
 pytestmark = pytest.mark.asyncio
 
@@ -41,7 +41,7 @@ class ScriptedLLMClient:
 
 
 def build_generator(responses) -> tuple:
-    from deckforge.adapters.context_generator import ContextGenerator
+    from ankislop.adapters.context_generator import ContextGenerator
 
     client = ScriptedLLMClient(responses)
     return ContextGenerator(client, model="fake-model"), client

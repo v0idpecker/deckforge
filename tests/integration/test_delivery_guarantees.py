@@ -5,11 +5,11 @@ import allure
 import pytest
 from sqlalchemy import update
 
-from deckforge.db.models.decks import DeckTask
-from deckforge.dto.deck_task import DeckTaskCreateDTO
-from deckforge.relay.service import OutboxRelay
-from deckforge.scheduler.service import RetryScheduler
-from deckforge.services.errors import DataAccessError
+from ankislop.db.models.decks import DeckTask
+from ankislop.dto.deck_task import DeckTaskCreateDTO
+from ankislop.relay.service import OutboxRelay
+from ankislop.scheduler.service import RetryScheduler
+from ankislop.services.errors import DataAccessError
 
 pytestmark = pytest.mark.asyncio
 

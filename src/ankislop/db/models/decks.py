@@ -1,0 +1,93 @@
+import datetime
+import uuid
+from typing import List
+
+from sqlalchemy import ForeignKey, UniqueConstraint
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.sql.sqltypes import INT, JSON, TEXT, UUID, DateTime
+
+from ankislop.db.models.base import Base
+from ankislop.db.models.user import User
+
+def utc_now() -> datetime.datetime:
+    return datetime.datetime.now(datetime.timezone.utc)
+
+class DeckTask(Base):
+    __tablename__ = "deck_tasks"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    status: Mapped[str] = mapped_column(TEXT, nullable=False)
+    current_stage: Mapped[str] = mapped_column(TEXT)
+    total_items: Mapped[int] = mapped_column(INT, nullable=False)
+    completed_items: Mapped[int] = mapped_column(INT, default=0)
+    failed_items: Mapped[int] = mapped_column(INT, default=0)
+    options: Mapped[dict] = mapped_column(JSON, nullable=False)
+    error: Mapped[str] = mapped_column(TEXT, nullable=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+        onupdate=utc_now,
+    )
+    attempt_count: Mapped[int] = mapped_column(INT, nullable=False, default=0)
+    next_retry_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    deck_items: Mapped[List["DeckItem"]] = relationship(back_populates="deck_task")
+    deck_cards: Mapped[List["DeckCard"]] = relationship(back_populates="deck_task")
+    user: Mapped["User"] = relationship(back_populates="tasks")
+
+class DeckItem(Base):
+    __tablename__ = "deck_items"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    task_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("deck_tasks.id"))
+    raw_word: Mapped[str] = mapped_column(TEXT, nullable=False)
+    normalized_word: Mapped[str] = mapped_column(TEXT, nullable=True)
+    status: Mapped[str] = mapped_column(TEXT, nullable=False)
+    stage: Mapped[str] = mapped_column(TEXT, nullable=False)
+    sentence: Mapped[str] = mapped_column(TEXT, nullable=True)
+    translation: Mapped[str] = mapped_column(TEXT, nullable=True)
+    error: Mapped[str] = mapped_column(TEXT, nullable=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+        onupdate=utc_now,
+    )
+    deck_task: Mapped["DeckTask"] = relationship(back_populates="deck_items")
+    deck_cards: Mapped[List["DeckCard"]] = relationship(back_populates="deck_item")
+
+class DeckCard(Base):
+    __tablename__ = "deck_cards"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    task_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("deck_tasks.id"))
+    item_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("deck_items.id"))
+    word: Mapped[str] = mapped_column(TEXT, nullable=False)
+    target_word_form: Mapped[str | None] = mapped_column(TEXT, nullable=True)
+    sentence: Mapped[str] = mapped_column(TEXT, nullable=False)
+    translation: Mapped[str] = mapped_column(TEXT, nullable=False)
+    position: Mapped[int] = mapped_column(INT, nullable=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    deck_task: Mapped["DeckTask"] = relationship(back_populates="deck_cards")
+    deck_item: Mapped["DeckItem"] = relationship(back_populates="deck_cards")
+
+    __table_args__ = (
+        UniqueConstraint("item_id", "position", name="uix_card_position"),
+    )

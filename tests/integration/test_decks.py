@@ -7,10 +7,10 @@ from httpx import AsyncClient, HTTPError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from deckforge.db.models.decks import DeckCard, DeckItem, DeckTask
-from deckforge.db.models.outbox import EventStatus, OutboxEvent
-from deckforge.db.models.user import User
-from deckforge.dto.user import UserDTO
+from ankislop.db.models.decks import DeckCard, DeckItem, DeckTask
+from ankislop.db.models.outbox import EventStatus, OutboxEvent
+from ankislop.db.models.user import User
+from ankislop.dto.user import UserDTO
 
 pytestmark = pytest.mark.asyncio
 

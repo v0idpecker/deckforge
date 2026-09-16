@@ -20,35 +20,35 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
-from deckforge.adapters.amqp.queue_publisher import RabbitPublisher
-from deckforge.adapters.amqp.worker import setup_worker
-from deckforge.adapters.context_generator import ContextGenerator
-from deckforge.adapters.errors import ExternalServiceError
-from deckforge.adapters.security import GoogleOAuthAdapter, JWTAdapter
-from deckforge.api.handlers.auth import get_current_user
-from deckforge.api.handlers.auth import router as auth_router
-from deckforge.api.handlers.decks import router as decks_router
-from deckforge.config import (
+from ankislop.adapters.amqp.queue_publisher import RabbitPublisher
+from ankislop.adapters.amqp.worker import setup_worker
+from ankislop.adapters.context_generator import ContextGenerator
+from ankislop.adapters.errors import ExternalServiceError
+from ankislop.adapters.security import GoogleOAuthAdapter, JWTAdapter
+from ankislop.api.handlers.auth import get_current_user
+from ankislop.api.handlers.auth import router as auth_router
+from ankislop.api.handlers.decks import router as decks_router
+from ankislop.config import (
     AppConfig,
     Config,
     PostgresConfig,
     RabbitMQConfig,
     SecurityConfig,
 )
-from deckforge.db.dao.decks import DeckCardDAO, DeckItemDAO, DeckTaskDAO
-from deckforge.db.dao.llm_cache import LLMCacheDAO
-from deckforge.db.dao.outbox import OutboxEventDAO
-from deckforge.db.models import Base
-from deckforge.db.models.user import User
-from deckforge.di.providers import DAOProvider, ServiceProvider
-from deckforge.dto.user import UserDTO
-from deckforge.pipeline.deck_pipeline import DeckPipeline
-from deckforge.scheduler.service import RetryScheduler
-from deckforge.services.contextgen import ContextGenerationService
-from deckforge.services.decks.deckcard import DeckCardService
-from deckforge.services.decks.deckitem import DeckItemSerivce
-from deckforge.services.decks.decktask import DeckTaskService
-from deckforge.services.llm_cache import LLMCacheService
+from ankislop.db.dao.decks import DeckCardDAO, DeckItemDAO, DeckTaskDAO
+from ankislop.db.dao.llm_cache import LLMCacheDAO
+from ankislop.db.dao.outbox import OutboxEventDAO
+from ankislop.db.models import Base
+from ankislop.db.models.user import User
+from ankislop.di.providers import DAOProvider, ServiceProvider
+from ankislop.dto.user import UserDTO
+from ankislop.pipeline.deck_pipeline import DeckPipeline
+from ankislop.scheduler.service import RetryScheduler
+from ankislop.services.contextgen import ContextGenerationService
+from ankislop.services.decks.deckcard import DeckCardService
+from ankislop.services.decks.deckitem import DeckItemSerivce
+from ankislop.services.decks.decktask import DeckTaskService
+from ankislop.services.llm_cache import LLMCacheService
 
 # base test fixtures
 

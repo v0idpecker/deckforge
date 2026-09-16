@@ -9,9 +9,9 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import select
 
-from deckforge.adapters.errors import ExternalServiceError
-from deckforge.db.models.user import User
-from deckforge.dto.user import UserDTO
+from ankislop.adapters.errors import ExternalServiceError
+from ankislop.db.models.user import User
+from ankislop.dto.user import UserDTO
 
 pytestmark = pytest.mark.asyncio
 

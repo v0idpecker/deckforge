@@ -1,6 +1,6 @@
-# DeckForge Frontend
+# AnkiSlop Frontend
 
-Single-page frontend for DeckForge backend.
+Single-page frontend for AnkiSlop backend.
 
 ## Stack
 

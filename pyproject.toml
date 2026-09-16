@@ -1,10 +1,10 @@
 [tool.poetry]
-name = "deckforge"
+name = "ankislop"
 version = "0.1.0"
 description = ""
 authors = ["peckerw00d <balkarov05@gmail.com>"]
 readme = "README.md"
-packages = [{include = "deckforge", from = "src"}]
+packages = [{include = "ankislop", from = "src"}]
 
 [tool.poetry.dependencies]
 python = "^3.12"

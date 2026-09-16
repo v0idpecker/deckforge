@@ -102,9 +102,9 @@ services:
       start_period: 10s
 
   relay:
-    image: deckforge-backend
+    image: ankislop-backend
     restart: unless-stopped
-    command: ["python", "-m", "deckforge.relay"]
+    command: ["python", "-m", "ankislop.relay"]
     environment:
       POSTGRES_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/postgres
       RABBITMQ_URL: amqp://rmuser:rmpassword@rabbitmq:5672/
@@ -117,9 +117,9 @@ services:
         condition: service_healthy
 
   scheduler:
-    image: deckforge-backend
+    image: ankislop-backend
     restart: unless-stopped
-    command: ["python", "-m", "deckforge.scheduler"]
+    command: ["python", "-m", "ankislop.scheduler"]
     environment:
       POSTGRES_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/postgres
       RABBITMQ_URL: amqp://rmuser:rmpassword@rabbitmq:5672/

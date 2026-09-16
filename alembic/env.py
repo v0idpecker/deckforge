@@ -3,7 +3,7 @@ import os
 from logging.config import fileConfig
 
 from alembic import context
-from deckforge.db.models.base import Base
+from ankislop.db.models.base import Base
 from dotenv import load_dotenv
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection

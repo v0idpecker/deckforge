@@ -5,10 +5,10 @@ import pytest
 from sqlalchemy.ext.asyncio.session import AsyncSession
 from sqlalchemy.sql.expression import select
 
-from deckforge.db.models.decks import DeckCard, DeckItem, DeckTask
-from deckforge.dto.deck_card import DeckCardCreateDTO
-from deckforge.dto.user import UserDTO
-from deckforge.services.decks.deckcard import DeckCardService
+from ankislop.db.models.decks import DeckCard, DeckItem, DeckTask
+from ankislop.dto.deck_card import DeckCardCreateDTO
+from ankislop.dto.user import UserDTO
+from ankislop.services.decks.deckcard import DeckCardService
 
 pytestmark = pytest.mark.asyncio
 
